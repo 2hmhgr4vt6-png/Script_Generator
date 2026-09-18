@@ -2,7 +2,7 @@ import 'server-only'
 import { AI_PROVIDER_IDS, workspaceCredentials, type AIProviderId, type ResolvedCredentials } from '@/lib/credentials'
 import { AnthropicProvider } from './providers/anthropic'
 import { OpenAIProvider } from './providers/openai'
-import type { AIProvider } from './types'
+import { AIProviderError, type AIProvider } from './types'
 
 export * from './types'
 
@@ -154,6 +154,10 @@ export function parseJson<T>(raw: string): T {
     if (start !== -1 && end > start) {
       return JSON.parse(candidate.slice(start, end + 1)) as T
     }
-    throw new Error('The AI response could not be parsed. Please try again.')
+    throw new AIProviderError(
+      `The model replied with text that is not valid JSON, so the response could not be read. ` +
+        `This usually means the model does not follow JSON mode well — try a different model in Settings. ` +
+        `It began: "${trimmed.slice(0, 120).replace(/\s+/g, ' ')}"`,
+    )
   }
 }

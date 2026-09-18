@@ -55,6 +55,29 @@ export class OpenAIProvider implements AIProvider {
   }
 
   async complete(messages: AIMessage[], options: CompletionOptions = {}): Promise<string> {
+    try {
+      return await this.request(messages, options)
+    } catch (error) {
+      // Support for JSON mode varies across OpenAI-compatible providers. When a
+      // provider rejects it, ask again in plain mode with the instruction moved
+      // into the prompt — parseJson still copes with a fenced or padded reply.
+      if (options.json && error instanceof AIProviderError && error.code === 'json-mode-unsupported') {
+        return this.request(
+          [
+            ...messages.slice(0, -1),
+            {
+              ...messages[messages.length - 1],
+              content: `${messages[messages.length - 1].content}\n\nRespond with raw JSON only. No prose, no markdown fences.`,
+            },
+          ],
+          { ...options, json: false },
+        )
+      }
+      throw error
+    }
+  }
+
+  private async request(messages: AIMessage[], options: CompletionOptions = {}): Promise<string> {
     const body: Record<string, unknown> = {
       ...this.requestDefaults,
       model: this.model,
@@ -96,6 +119,9 @@ export class OpenAIProvider implements AIProvider {
         const reason = extractMessage(detail)
         if (response.status === 400 && /api key/i.test(reason)) {
           throw new AIProviderError(`The ${who} API key was rejected.`, 'invalid-key')
+        }
+        if (response.status === 400 && /response_format|json_object|json mode|json_schema/i.test(reason)) {
+          throw new AIProviderError(`${who} does not support JSON mode.`, 'json-mode-unsupported')
         }
         if (response.status === 400 && /model/i.test(reason)) {
           throw new AIProviderError(`${who} rejected the model "${this.model}": ${reason}`)

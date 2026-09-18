@@ -225,11 +225,13 @@ export async function credentialsHealth(): Promise<{ generatedKey: boolean }> {
 }
 
 /**
- * Demo mode = no AI credential available from any source. Generated content is
- * then sample data and is labelled as such throughout the UI.
+ * Demo mode = no AI provider resolves at all. Asking the AI factory rather than
+ * checking two specific key names keeps this correct as providers are added —
+ * an earlier version only looked for OpenAI and Anthropic keys, so configuring
+ * Gemini left the whole UI still claiming to be in demo mode.
  */
 export async function isDemoMode(): Promise<boolean> {
   if (demoModeForced()) return true
-  const credentials = await workspaceCredentials()
-  return !credentials.get('OPENAI_API_KEY') && !credentials.get('ANTHROPIC_API_KEY')
+  const { buildAIProvider } = await import('@/lib/ai')
+  return !buildAIProvider(await workspaceCredentials())
 }

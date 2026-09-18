@@ -186,6 +186,7 @@ pick which one writes. On *Automatic* the studio prefers the free providers.
 | *"used its whole token budget on reasoning"* | A thinking model spent the budget before writing. Switch to a Flash model, or a shorter target duration. |
 | *"rate limit reached"* | Free tiers cap requests per minute and per day. Wait and retry. |
 | *"Could not reach Ollama"* | Ollama is not running. Start it with `ollama serve`. |
+| *"replied with text that is not valid JSON"* | The model ignored JSON mode. Pick a different model — the message quotes what it actually said. |
 
 **Each key belongs on its own card.** A DeepSeek key on the OpenAI card will be rejected, because it
 is sent to `api.openai.com`. The cards are separate services, not interchangeable slots.

@@ -105,6 +105,10 @@ export function ScriptWizard({ idea, problem, session, sources, preselectedSourc
   }
 
   async function generateScript(withHook: HookOption | null) {
+    // Remember where to return to: skipping hooks starts from the brief, so
+    // failing back to an empty hook step would strand the user with nothing to
+    // choose from.
+    const origin = step
     setError(null)
     setLoading('script')
     setStep(2)
@@ -123,7 +127,7 @@ export function ScriptWizard({ idea, problem, session, sources, preselectedSourc
     } catch (err) {
       setError((err as Error).message)
       setLoading(null)
-      setStep(1)
+      setStep(origin)
     }
   }
 
@@ -154,7 +158,7 @@ export function ScriptWizard({ idea, problem, session, sources, preselectedSourc
         </ol>
       </header>
 
-      {error ? <ErrorState message={error} /> : null}
+      {error ? <ErrorState title="Could not generate" message={error} /> : null}
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
@@ -198,7 +202,13 @@ export function ScriptWizard({ idea, problem, session, sources, preselectedSourc
                 {hooksAreDemo ? <DemoBadge /> : null}
               </CardHeader>
               <CardContent className="space-y-4">
-                <HookCards hooks={hooks} selectedId={selectedHook?.id ?? null} onSelect={setSelectedHook} />
+                {hooks.length === 0 ? (
+                  <p className="rounded-lg border border-line bg-surface px-3 py-2.5 text-xs text-muted">
+                    No hooks yet. Use “Regenerate hooks” to create some, or go back to the brief.
+                  </p>
+                ) : (
+                  <HookCards hooks={hooks} selectedId={selectedHook?.id ?? null} onSelect={setSelectedHook} />
+                )}
                 <div className="flex flex-wrap gap-2 border-t border-line pt-4">
                   <Button
                     variant="primary"

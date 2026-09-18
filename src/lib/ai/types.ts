@@ -22,7 +22,13 @@ export interface AIProvider {
 export class AIProviderError extends Error {
   constructor(
     message: string,
-    readonly code: 'missing-key' | 'rate-limited' | 'invalid-key' | 'timeout' | 'upstream' = 'upstream',
+    readonly code:
+      | 'missing-key'
+      | 'rate-limited'
+      | 'invalid-key'
+      | 'timeout'
+      | 'upstream'
+      | 'json-mode-unsupported' = 'upstream',
   ) {
     super(message)
     this.name = 'AIProviderError'

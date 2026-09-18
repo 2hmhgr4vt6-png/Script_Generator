@@ -14,8 +14,26 @@ export class AppError extends Error {
 }
 
 /**
- * Wraps a route handler so every failure becomes a safe JSON error.
- * Internal details are logged, never returned to the client.
+ * Errors whose message is written for the person using the studio.
+ *
+ * These are matched by name rather than by pattern-matching the message: a
+ * regex over wording silently swallowed real provider errors ("Gemini returned
+ * an empty response", "The AI response could not be parsed") and replaced them
+ * with a generic sentence, which left no way to tell what had actually failed.
+ */
+const USER_FACING_ERRORS = new Set([
+  'AIProviderError',
+  'SearchProviderError',
+  'SocialProviderError',
+  'AppError',
+])
+
+/**
+ * Wraps a route handler so every failure becomes a JSON error.
+ *
+ * Provider and validation errors are surfaced verbatim. Anything unexpected is
+ * logged in full server-side and reported generically, since it may carry
+ * internals that should not reach the client.
  */
 export function apiHandler<T>(handler: () => Promise<T>): Promise<NextResponse> {
   return handler()
@@ -30,12 +48,16 @@ export function apiHandler<T>(handler: () => Promise<T>): Promise<NextResponse> 
       if (error instanceof AppError) {
         return NextResponse.json({ error: error.message, code: error.code }, { status: error.status })
       }
+
+      const name = (error as Error)?.name ?? 'Error'
       const message = (error as Error)?.message ?? 'Something went wrong.'
-      console.error('[bhasika:api]', (error as Error)?.name, message)
-      // Provider errors are written to be safe to surface; anything else is generic.
-      const safe = /provider|api key|rate limit|timed out|not connected|AI |search|Reddit|YouTube/i.test(message)
+      console.error('[bhasika:api]', name, message, (error as Error)?.stack)
+
+      if (USER_FACING_ERRORS.has(name)) {
+        return NextResponse.json({ error: message, code: 'provider_error' }, { status: 502 })
+      }
       return NextResponse.json(
-        { error: safe ? message : 'Something went wrong. Please try again.', code: 'server_error' },
+        { error: `Something went wrong: ${message}`, code: 'server_error' },
         { status: 500 },
       )
     })
