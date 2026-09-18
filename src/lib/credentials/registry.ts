@@ -370,7 +370,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
     summary: 'Reads posts and comments from the Page this token manages.',
     docsUrl: 'https://developers.facebook.com/tools/explorer/',
     caveat:
-      'Meta has no platform-wide public keyword search. A token only reaches content you own or manage, so this reads your own Page.',
+      'Meta has no platform-wide public keyword search — a token only reaches content you own or manage, so this reads your own Page, not public Facebook. Tokens from the Graph API Explorer expire in about an hour; exchange yours for a long-lived Page token (roughly 60 days) or you will be pasting a new one constantly.',
     fields: [{ key: 'FACEBOOK_ACCESS_TOKEN', label: 'Page access token', secret: true, required: true }],
   },
   {
@@ -380,7 +380,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
     summary: 'Reads media and captions from the Instagram account this token manages.',
     docsUrl: 'https://developers.facebook.com/docs/instagram-api/',
     caveat:
-      'Same limit as Facebook: the token reaches the connected Business account only, not public Instagram at large.',
+      'Same limit as Facebook: the token reaches the connected Business account only, not public Instagram at large. Short-lived tokens expire in about an hour, so exchange yours for a long-lived one.',
     fields: [{ key: 'INSTAGRAM_ACCESS_TOKEN', label: 'Access token', secret: true, required: true }],
   },
 ]

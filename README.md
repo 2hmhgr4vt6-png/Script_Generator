@@ -118,6 +118,10 @@ The whole thing takes about ten minutes.
 
 This is the one that matters: nothing generates without it.
 
+> **A ChatGPT Plus subscription is not API access.** The OpenAI API is billed separately at
+> `platform.openai.com` and needs its own payment method — paying for ChatGPT does not give you a
+> working API key. Gemini below needs no card at all.
+
 1. Go to **<https://aistudio.google.com/app/apikey>**.
 2. Sign in with any Google account.
 3. Click **Create API key**. No credit card is requested at any point.
@@ -169,6 +173,26 @@ There is no lawful way to search every platform. What each one actually permits:
 
 Anything claiming to monitor "all social media" is either scraping against platform terms or
 reselling one of the above. This studio uses official APIs and public feeds only.
+
+### Facebook / Instagram — optional, and rarely worth it
+
+Read the limitation first: **a Meta token reaches only the Page or account it manages.** It cannot
+search public Facebook or Instagram, because Meta exposes no such API. So this reads comments on
+*your own* posts — useful for replying to your audience, useless for discovering new questions.
+
+If you still want it:
+
+1. <https://developers.facebook.com/apps> → **Create app** → type **Business**.
+2. Connect the Page you manage under **App settings**.
+3. Open the **Graph API Explorer**: <https://developers.facebook.com/tools/explorer/>
+4. Pick your app, then **Get Token → Get Page Access Token**, and grant `pages_read_engagement`
+   and `pages_read_user_content`.
+5. Copy the token, then in the studio: **Settings → API keys → Facebook → Add key**, paste it into
+   **Page access token**, **Save**, **Test**.
+
+**The token you just copied expires in about an hour.** Exchange it for a long-lived Page token
+(~60 days) via the Access Token Tool or the `oauth/access_token` endpoint, otherwise you will be
+repasting it all day.
 
 ### 4. YouTube — optional, free quota
 
