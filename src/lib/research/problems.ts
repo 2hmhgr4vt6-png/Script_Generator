@@ -100,9 +100,15 @@ export async function discoverProblems(input: DiscoverInput): Promise<DiscoverOu
     .filter((post, index, all) => all.findIndex((p) => p.url === post.url) === index)
     .slice(0, input.limit ?? 24)
 
-  const problems: AudienceProblem[] = candidates.map((post) => {
-    const text = `${post.title} ${post.excerpt}`
-    return {
+  const problems: AudienceProblem[] = candidates
+    .map((post) => {
+      const text = `${post.title} ${post.excerpt}`
+      return { post, text, relevance: relevanceOf(text) }
+    })
+    // A broad sweep pulls in unrelated posts that merely look like questions;
+    // anything with no topical overlap is dropped rather than stored as noise.
+    .filter((candidate) => candidate.relevance >= MINIMUM_RELEVANCE)
+    .map(({ post, text, relevance }) => ({
       id: newId(),
       user_id: input.userId,
       session_id: null,
@@ -115,15 +121,14 @@ export async function discoverProblems(input: DiscoverInput): Promise<DiscoverOu
       posted_at: post.postedAt,
       category: classifyCategory(text) as TopicCategory,
       language: detectLanguage(text),
-      relevance: relevanceOf(text),
+      relevance,
       status: 'new' as const,
       analysis: null,
       related_questions: [],
       is_demo: false,
       created_at: now(),
       updated_at: now(),
-    }
-  })
+    }))
 
   for (const problem of problems) await store.insert('audience_problems', problem)
 
@@ -144,13 +149,17 @@ export async function discoverProblems(input: DiscoverInput): Promise<DiscoverOu
 
 const RELEVANT_TERMS = [
   'germany', 'german', 'daad', 'uni-assist', 'anabin', 'ects', 'ielts', 'visa', 'blocked account',
-  'studienkolleg', 'hiwi', 'werkstudent', 'nepal', 'nepali', 'semester', 'aps',
+  'studienkolleg', 'hiwi', 'werkstudent', 'nepal', 'nepali', 'semester', 'aps', 'study abroad',
+  'university', 'admission', 'scholarship', 'tuition', 'student',
 ]
+
+/** Matching no topical term at all means the post is not about Bhasika's subject. */
+const MINIMUM_RELEVANCE = 52
 
 function relevanceOf(text: string): number {
   const lower = text.toLowerCase()
   const hits = RELEVANT_TERMS.filter((term) => lower.includes(term)).length
-  return Math.min(98, 40 + hits * 12)
+  return hits === 0 ? 0 : Math.min(98, 40 + hits * 12)
 }
 
 /** Deeper AI pass used on the problem detail page. */

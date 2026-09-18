@@ -2,6 +2,7 @@ import 'server-only'
 import { AI_PROVIDER_IDS, workspaceCredentials, type AIProviderId, type ResolvedCredentials } from '@/lib/credentials'
 import { AnthropicProvider } from './providers/anthropic'
 import { OpenAIProvider } from './providers/openai'
+import { FailoverAIProvider } from './failover'
 import { AIProviderError, type AIProvider } from './types'
 
 export * from './types'
@@ -112,32 +113,52 @@ export function buildNamedAIProvider(id: AIProviderId, credentials: ResolvedCred
 }
 
 /**
- * Resolves the provider to use: the explicit choice when one is stored,
- * otherwise the first configured provider in AI_PROVIDER_IDS order — which puts
- * the no-payment-method options first.
+ * Resolves the provider chain.
+ *
+ * Every configured provider is included, ordered by the explicit choice first
+ * (when one is stored) and otherwise by AI_PROVIDER_IDS, which puts the
+ * no-payment-method options first. The chain falls through on failure, so a
+ * provider that is rate-limited or misconfigured does not stop the work.
  */
 export function buildAIProvider(credentials: ResolvedCredentials): AIProvider | null {
   const chosen = credentials.get('AI_PROVIDER')?.toLowerCase() as AIProviderId | undefined
-  if (chosen && (AI_PROVIDER_IDS as readonly string[]).includes(chosen)) {
-    return buildNamedAIProvider(chosen, credentials)
-  }
-  for (const id of AI_PROVIDER_IDS) {
-    const provider = buildNamedAIProvider(id, credentials)
-    if (provider) return provider
-  }
-  return null
+  const order: AIProviderId[] =
+    chosen && (AI_PROVIDER_IDS as readonly string[]).includes(chosen)
+      ? [chosen, ...AI_PROVIDER_IDS.filter((id) => id !== chosen)]
+      : [...AI_PROVIDER_IDS]
+
+  const providers = order
+    .map((id) => buildNamedAIProvider(id, credentials))
+    .filter((provider): provider is AIProvider => provider !== null)
+
+  if (!providers.length) return null
+  if (providers.length === 1) return providers[0]
+  return new FailoverAIProvider(providers)
+}
+
+/** Every provider that currently has usable credentials, in fallback order. */
+export function configuredAIProviders(credentials: ResolvedCredentials): AIProvider[] {
+  const provider = buildAIProvider(credentials)
+  if (!provider) return []
+  return provider instanceof FailoverAIProvider ? provider.providers : [provider]
 }
 
 export async function getAIProvider(): Promise<AIProvider | null> {
   return buildAIProvider(await workspaceCredentials())
 }
 
-export async function aiStatus(): Promise<{ connected: boolean; provider: string | null; model: string | null }> {
+export async function aiStatus(): Promise<{
+  connected: boolean
+  provider: string | null
+  model: string | null
+  fallbacks: string[]
+}> {
   const provider = await getAIProvider()
   return {
     connected: Boolean(provider),
     provider: provider?.name ?? null,
     model: provider?.model ?? null,
+    fallbacks: provider instanceof FailoverAIProvider ? provider.available.slice(1) : [],
   }
 }
 

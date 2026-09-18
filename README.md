@@ -45,7 +45,7 @@ go from a raw idea to a finished, sourced video script:
 | **API keys** | Added in Settings, encrypted at rest, verified with a real call per provider — see [API keys](#api-keys) |
 | **Raw ideas** | Full brief capture — topic, language, duration (incl. custom), content type, audience, platform, tone — with auto-categorisation |
 | **Research** | AI query planning → multi-query search → source classification (official / government / university / news / community / blog) → fact extraction with verification status → conflict detection |
-| **Problem discovery** | Reddit (official OAuth API), YouTube Data API, Meta Graph API, plus web search; question detection, topic classification, relevance scoring, dedupe by source URL |
+| **Problem discovery** | Works with no keys: Reddit's public feed and Stack Exchange are on by default. Reddit OAuth, YouTube and Meta add to it. Question detection, topic classification, a relevance floor, dedupe by source URL |
 | **Problem analysis** | Confusion, situation, misconception, information needed, viewer takeaway, why it matters, content angles, related questions |
 | **Hooks** | Five distinct styles (situation, pain-point, curiosity, direct question, myth-busting) with delivery-time estimates and a recommendation |
 | **Scripts** | Hook / Problem / Solution / CTA, grounded in the selected sources, in natural Nepali or English at the target duration |
@@ -144,13 +144,31 @@ Tavily's free plan gives a monthly credit allowance with no card. One search cos
 
 ### 3. Reddit — optional, free (5 minutes)
 
-This is where the most useful audience questions come from.
+**Discovery already works without this.** With no keys at all the studio reads Reddit's public
+search feed and the Stack Exchange Q&A sites, which need no credentials. Adding Reddit API
+credentials raises the rate limits and returns richer results.
 
 1. Go to **<https://www.reddit.com/prefs/apps>** → **create another app…**
 2. Choose type **script**, put anything in the redirect field (`http://localhost:3000`).
 3. The **client ID** is the short string under the app name; the **secret** is labelled.
 4. **Settings → API keys → Reddit → Add key**, paste both, set a user agent like
    `bhasika-content-studio/1.0 by u/yourname`, **Save**, **Test**.
+
+### What "all social media" realistically means
+
+There is no lawful way to search every platform. What each one actually permits:
+
+| Platform | Reality |
+| --- | --- |
+| **Reddit** | Fully searchable. Public feed with no key; the official API with credentials. The best source by far for this audience. |
+| **Stack Exchange** | Fully searchable, no key. Expatriates and Academia carry exactly the visa and admission questions Bhasika answers. |
+| **YouTube** | Public video search via the official API. |
+| **Web at large** | Forum and Q&A threads surface through the search provider. |
+| **Facebook / Instagram** | No platform-wide public search exists. A Meta token reaches only the Page or account it manages — so this reads your own comments, nothing more. |
+| **TikTok** | No public search API for this purpose. |
+
+Anything claiming to monitor "all social media" is either scraping against platform terms or
+reselling one of the above. This studio uses official APIs and public feeds only.
 
 ### 4. YouTube — optional, free quota
 
@@ -173,6 +191,11 @@ account — but it needs a reasonably powerful machine, and small local models w
 
 If you configure more than one, a **Use** selector appears at the top of the AI section so you can
 pick which one writes. On *Automatic* the studio prefers the free providers.
+
+**They also back each other up.** Every configured provider forms a fallback chain: if the active
+one is rate-limited or failing, the next one is tried automatically. Free tiers are capped per
+minute and per day, so configuring two or three means hitting a cap slows you down instead of
+stopping you. If they all fail, the error names what each one said.
 
 > Free tiers and model names change. Every figure above was checked in September 2026 — if something
 > looks different, trust the provider's own pricing page over this file.
@@ -207,7 +230,8 @@ Every provider key is entered in **Settings → API keys**. No file editing, no 
 | OpenAI | **Paid only** | The same |
 | Anthropic | **Paid only** | The same |
 | Web search (Tavily / Serper / Exa) | Tavily free, no card | Live internet research and public-discussion discovery |
-| Reddit | Free | Public posts where your audience asks questions |
+| Reddit | Free, optional | Public feed needs no key; credentials raise the limits |
+| Stack Exchange | Free, on by default | Visa, admission and recognition questions. Optional key raises the daily cap |
 | YouTube | Free quota | Public video search |
 | Facebook / Instagram | Meta app required | Posts on the Page or account the token manages |
 
@@ -358,7 +382,14 @@ study-in-germany.de, uni-assist, anabin, Make it in Germany, the Federal Foreign
 Hochschulkompass). If every query fails, the session is marked **error** with the provider's own
 message — it never reports an empty-but-successful search.
 
+### Stack Exchange
+
+On by default with no configuration. Anonymous API use is capped per IP per day; if you hit that,
+register a free app at <https://stackapps.com/apps/oauth/register> and add the key in Settings.
+
 ### Reddit
+
+Optional — the public search feed is used when no credentials are present.
 
 1. Create an app at <https://www.reddit.com/prefs/apps> (type: **script**).
 2. Enter the client ID, client secret and a descriptive user agent in Settings, or set

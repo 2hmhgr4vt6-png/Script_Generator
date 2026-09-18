@@ -16,6 +16,7 @@ export type IntegrationId =
   | 'openai'
   | 'anthropic'
   | 'search'
+  | 'stackexchange'
   | 'reddit'
   | 'youtube'
   | 'facebook'
@@ -309,12 +310,35 @@ export const INTEGRATIONS: IntegrationSpec[] = [
     ],
   },
   {
+    id: 'stackexchange',
+    label: 'Stack Exchange',
+    group: 'social',
+    summary: 'Searches the Expatriates, Academia and Travel Q&A sites — visa, admission and recognition questions.',
+    docsUrl: 'https://stackapps.com/apps/oauth/register',
+    free: {
+      label: 'Free · on by default',
+      note: 'Works with no key at all. Anonymous use is capped per IP per day; a free Stack Apps key raises that cap.',
+    },
+    fields: [
+      {
+        key: 'STACKEXCHANGE_KEY',
+        label: 'Stack Apps key (optional)',
+        secret: true,
+        required: false,
+        help: 'Only needed if you hit the anonymous daily cap. Registering an app takes a minute and costs nothing.',
+      },
+    ],
+  },
+  {
     id: 'reddit',
     label: 'Reddit',
     group: 'social',
     summary: 'Finds public posts where people ask the questions Bhasika answers.',
     docsUrl: 'https://www.reddit.com/prefs/apps',
-    free: { label: 'Free', note: 'Reddit API credentials cost nothing for this kind of read-only use.' },
+    free: {
+      label: 'Free',
+      note: 'Optional. Without credentials the studio reads Reddit\'s public search feed, which needs no key; adding an app raises the limits and returns richer results.',
+    },
     caveat: 'Create an app of type "script". Public listings only — no private subreddits, no scraping.',
     fields: [
       { key: 'REDDIT_CLIENT_ID', label: 'Client ID', secret: true, required: true },

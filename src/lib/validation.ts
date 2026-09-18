@@ -112,7 +112,7 @@ export const problemUpdateSchema = z.object({
 
 export const integrationProviderSchema = z.enum([
   'ai-routing', 'gemini', 'groq', 'openrouter', 'ollama', 'deepseek', 'openai', 'anthropic',
-  'search', 'reddit', 'youtube', 'facebook', 'instagram',
+  'search', 'stackexchange', 'reddit', 'youtube', 'facebook', 'instagram',
 ])
 
 export const integrationSaveSchema = z.object({

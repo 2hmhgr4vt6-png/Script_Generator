@@ -65,7 +65,7 @@ async function runTest(
   }
 
   const social = buildSocialProviders(credentials).find((p) => p.id === provider)
-  if (!social) throw new Error('Unknown social provider.')
+  if (!social) throw new Error('That source is not active in this configuration.')
   if (!social.status().connected) throw new Error(`${social.label} has no credentials configured.`)
   await social.verify()
   return `${social.label} accepted the credentials.`

@@ -39,16 +39,51 @@ export function greeting(date = new Date()): string {
   return 'Good evening'
 }
 
-/** Small typed fetch wrapper that surfaces the API's error message. */
+/**
+ * Small typed fetch wrapper that surfaces the API's error message.
+ *
+ * When the response is not JSON — a gateway timeout, a proxy error page, a
+ * crashed worker — there is no `error` field to read. Rather than substituting
+ * a generic sentence (which hides the only evidence available), report the
+ * status and the start of the body.
+ */
 export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-  })
-  const text = await response.text()
-  const data = text ? JSON.parse(text) : {}
-  if (!response.ok) {
-    throw new Error((data as { error?: string }).error ?? 'Something went wrong. Please try again.')
+  let response: Response
+  try {
+    response = await fetch(url, {
+      ...init,
+      headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    })
+  } catch (error) {
+    throw new Error(
+      `Could not reach the server (${(error as Error).message}). Is it still running?`,
+    )
   }
+
+  const text = await response.text()
+  let data: unknown = {}
+  let parsed = true
+  try {
+    data = text ? JSON.parse(text) : {}
+  } catch {
+    parsed = false
+  }
+
+  if (!response.ok) {
+    const apiMessage = parsed ? (data as { error?: string }).error : undefined
+    if (apiMessage) throw new Error(apiMessage)
+
+    const snippet = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200)
+    if (response.status === 504 || response.status === 408) {
+      throw new Error(
+        `The request timed out (HTTP ${response.status}). Free AI tiers can be slow — try a shorter duration, or a faster model such as Groq.`,
+      )
+    }
+    throw new Error(
+      `HTTP ${response.status} from ${url}${snippet ? ` — ${snippet}` : ' with an empty body'}`,
+    )
+  }
+
+  if (!parsed) throw new Error(`The server returned a response that was not JSON: ${text.slice(0, 200)}`)
   return data as T
 }
