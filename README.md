@@ -30,6 +30,7 @@ go from a raw idea to a finished, sourced video script:
 - [API integrations](#api-integrations)
 - [Security](#security)
 - [Architecture](#architecture)
+- [What is working, and Trends](#what-is-working-and-trends)
 - [API reference](#api-reference)
 - [Deployment](#deployment)
 - [Editorial rules built into the prompts](#editorial-rules-built-into-the-prompts)
@@ -46,6 +47,8 @@ go from a raw idea to a finished, sourced video script:
 | **Raw ideas** | Full brief capture — topic, language, duration (incl. custom), content type, audience, platform, tone — with auto-categorisation |
 | **Research** | AI query planning → multi-query search → source classification (official / government / university / news / community / blog) → fact extraction with verification status → conflict detection |
 | **Problem discovery** | Works with no keys: Reddit's public feed and Stack Exchange are on by default. Reddit OAuth, YouTube and Meta add to it. Question detection, topic classification, a relevance floor, dedupe by source URL |
+| **What is working** | Reads engagement counters from YouTube, Reddit and Stack Exchange, ranks each item against its own platform, and has the AI explain what the winners share |
+| **Trends** | Google's daily trending searches per country plus YouTube's most-popular chart, turned into content angles Bhasika can use without forcing the link |
 | **Problem analysis** | Confusion, situation, misconception, information needed, viewer takeaway, why it matters, content angles, related questions |
 | **Hooks** | Five distinct styles (situation, pain-point, curiosity, direct question, myth-busting) with delivery-time estimates and a recommendation |
 | **Scripts** | Hook / Problem / Solution / CTA, grounded in the selected sources, in natural Nepali or English at the target duration |
@@ -329,6 +332,43 @@ the settings that can only come from the environment.
 | `FACEBOOK_ACCESS_TOKEN`, `INSTAGRAM_ACCESS_TOKEN` | no | Meta Graph API |
 | `BHASIKA_DEMO_MODE` | no | Force demo mode even with keys present |
 
+## What is working, and Trends
+
+Two research tools sit alongside problem discovery.
+
+### What is working (`/performance`)
+
+Measures which published Germany content is actually getting engagement, then explains why.
+
+- **YouTube** — views, likes and comments, via `search.list` plus one batched `videos.list` call.
+  This is the strongest signal and needs only the free API key.
+- **Reddit** — post score and comment count, via the authenticated API. The keyless public feed
+  reports no counters, so Reddit only appears here once credentials are added.
+- **Stack Exchange** — question score.
+
+Counts are not comparable across platforms, so each item is **percentile-ranked against the others
+from its own platform in the same scan**. A score of 100 means "did better than everything else
+measured on that platform here", not "is big". Formats are then ranked by median score, and the AI
+is asked to explain what the high performers share — grounded only in the items measured.
+
+### Trends (`/trends`)
+
+Collects what a country is searching for and watching, then works out the little of it Bhasika can
+honestly use.
+
+- **Google Trends** — the official daily trending-searches RSS feed, per country, no key required.
+- **YouTube** — the most-popular chart for that country, with the free key.
+
+Each angle is labelled **direct**, **adaptable** or **stretch**, and the prompt instructs the model
+to leave irrelevant trends out rather than force a connection, to never ride a tragedy or a
+political conflict, and to flag anything that risks looking opportunistic. An empty result is a
+valid answer — most of what trends has nothing to do with studying in Germany.
+
+**Not covered:** TikTok and Instagram publish no trending API, so their hashtag trends cannot be
+included. The Coverage panel says so on the page rather than letting you assume otherwise.
+
+---
+
 ## Demo mode vs live mode
 
 Demo mode is what you get with no AI key configured. It is a real, working local mode — not a
@@ -363,8 +403,9 @@ npm run db:migrate
 Or apply `supabase/migrations/0001_init.sql` through the Supabase SQL editor.
 
 The schema creates `users`, `user_preferences`, `ideas`, `research_sessions`, `research_sources`,
-`audience_problems`, `scripts`, `script_versions`, `behavior_events`, `scheduled_syncs` and
-`api_integrations`, with foreign keys, indexes, timestamps and row-level security enabled.
+`audience_problems`, `scripts`, `script_versions`, `behavior_events`, `scheduled_syncs`,
+`api_integrations`, `performance_reports` and `trend_scans`, with foreign keys, indexes, timestamps
+and row-level security enabled.
 
 There is one workspace row in `users`, created automatically on first load, and every other table is
 scoped to it. Keeping that scoping means the schema is ready if accounts are ever added back, and it
@@ -531,6 +572,8 @@ No route requires a session — they are all open. Errors return `{ error, code 
 | --- | --- | --- |
 | `GET POST` | `/api/ideas` | List / create ideas |
 | `GET POST` | `/api/research` | List sessions / run a research pass |
+| `GET POST` | `/api/performance` | List reports / measure what is performing |
+| `GET POST` | `/api/trends` | List scans / capture trends and derive angles |
 | `GET` | `/api/problems` | List problems with filters |
 | `POST` | `/api/problems/discover` | Run a discovery sweep |
 | `GET PATCH DELETE` | `/api/problems/[id]` | Read / update status / delete |
@@ -622,6 +665,11 @@ Stated plainly rather than papered over:
 - **Stored keys are only as private as the deployment.** They are encrypted at rest and never
   returned to the browser, but the running app can decrypt them, and it has no sign-in — so the
   access boundary in front of it is what protects them.
+- **Performance is measured on the platforms that report it**, which means YouTube above all.
+  Without that key the feature has very little to rank. It also measures what is popular among
+  *search results for your topic*, not the whole platform.
+- **Trends cover search and YouTube only.** TikTok and Instagram hashtag trends are not obtainable
+  through any public API.
 - **Fact checking is an assistant, not an approver.** It checks the script against the attached
   sources only. A human still reads anything about fees, deadlines or visa rules before it ships.
 

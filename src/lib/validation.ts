@@ -127,3 +127,12 @@ export const integrationSaveSchema = z.object({
 export const integrationDeleteSchema = z.object({
   provider: integrationProviderSchema,
 })
+
+export const performanceScanSchema = z.object({
+  topic: z.string().trim().max(200).optional(),
+  limit: z.coerce.number().int().min(5).max(60).optional(),
+})
+
+export const trendScanSchema = z.object({
+  region: z.string().trim().length(2).optional(),
+})

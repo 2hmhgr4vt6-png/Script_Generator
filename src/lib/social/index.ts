@@ -21,7 +21,7 @@ export function buildSocialProviders(credentials: ResolvedCredentials): SocialPr
     new StackExchangeProvider(credentials.get('STACKEXCHANGE_KEY'), credentials.get('STACKEXCHANGE_BASE_URL')),
     // The authenticated Reddit API is richer; its public feed is the fallback.
     reddit.status().connected ? reddit : new RedditPublicProvider(credentials.get('REDDIT_PUBLIC_BASE_URL')),
-    new YouTubeProvider(credentials.get('YOUTUBE_API_KEY')),
+    new YouTubeProvider(credentials.get('YOUTUBE_API_KEY'), credentials.get('YOUTUBE_BASE_URL')),
     new FacebookProvider(credentials.get('FACEBOOK_ACCESS_TOKEN')),
     new InstagramProvider(credentials.get('INSTAGRAM_ACCESS_TOKEN')),
   ]

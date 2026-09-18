@@ -1,5 +1,6 @@
 import {
-  FileText, FolderClock, LayoutDashboard, Lightbulb, MessageCircleQuestion, Search, Settings, type LucideIcon,
+  BarChart3, FileText, Flame, FolderClock, LayoutDashboard, Lightbulb, MessageCircleQuestion, Search,
+  Settings, type LucideIcon,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -15,6 +16,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/ideas', label: 'New Idea', icon: Lightbulb, match: ['/ideas'] },
   { href: '/problems', label: 'Problem Discovery', icon: MessageCircleQuestion, match: ['/problems'] },
   { href: '/research', label: 'Research', icon: Search, match: ['/research'] },
+  { href: '/performance', label: 'What Is Working', icon: BarChart3, match: ['/performance'] },
+  { href: '/trends', label: 'Trends', icon: Flame, match: ['/trends'] },
   { href: '/script/new', label: 'Script Studio', icon: FileText, match: ['/script'] },
   { href: '/scripts', label: 'Script History', icon: FolderClock, match: ['/scripts', '/history'] },
   { href: '/settings', label: 'Settings', icon: Settings, match: ['/settings'] },
@@ -25,6 +28,8 @@ export const PAGE_TITLES: Record<string, string> = {
   '/ideas': 'New Idea',
   '/problems': 'Audience Problems',
   '/research': 'Research',
+  '/performance': 'What Is Working',
+  '/trends': 'Trends',
   '/script/new': 'Script Studio',
   '/scripts': 'Script History',
   '/history': 'History',

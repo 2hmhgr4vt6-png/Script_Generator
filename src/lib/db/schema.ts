@@ -41,6 +41,13 @@ export const TABLES = {
     'id', 'user_id', 'provider', 'config', 'last_tested_at', 'last_test_status', 'last_test_message',
     'created_at', 'updated_at',
   ],
+  performance_reports: [
+    'id', 'user_id', 'topic', 'region', 'is_demo', 'signals', 'patterns', 'formats', 'summary',
+    'source_notes', 'created_at',
+  ],
+  trend_scans: [
+    'id', 'user_id', 'region', 'is_demo', 'trends', 'angles', 'summary', 'source_notes', 'created_at',
+  ],
   scheduled_syncs: [
     'id', 'user_id', 'source', 'frequency', 'cron', 'last_run_at', 'last_status', 'created_at', 'updated_at',
   ],
@@ -56,6 +63,8 @@ export const JSON_COLUMNS: Partial<Record<TableName, string[]>> = {
   script_versions: ['sections'],
   behavior_events: ['payload'],
   api_integrations: ['config'],
+  performance_reports: ['signals', 'patterns', 'formats', 'source_notes'],
+  trend_scans: ['trends', 'angles', 'source_notes'],
 }
 
 export function assertColumn(table: TableName, column: string): void {
