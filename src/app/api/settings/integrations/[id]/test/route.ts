@@ -1,7 +1,10 @@
 import type { NextRequest } from 'next/server'
 import { AppError, apiHandler } from '@/lib/api'
-import { buildAIProvider } from '@/lib/ai'
-import { integrationById, recordTestResult, resolveCredentials, type IntegrationId } from '@/lib/credentials'
+import { buildNamedAIProvider } from '@/lib/ai'
+import {
+  AI_PROVIDER_IDS, integrationById, recordTestResult, resolveCredentials,
+  type AIProviderId, type IntegrationId,
+} from '@/lib/credentials'
 import { buildSearchProvider } from '@/lib/search'
 import { buildSocialProviders } from '@/lib/social'
 import { currentWorkspace } from '@/lib/user'
@@ -38,19 +41,17 @@ async function runTest(
   provider: IntegrationId,
   credentials: Awaited<ReturnType<typeof resolveCredentials>>,
 ): Promise<string> {
-  if (provider === 'openai' || provider === 'anthropic') {
-    const forced = {
-      get: (key: string) => (key === 'AI_PROVIDER' ? provider : credentials.get(key)),
-      origin: credentials.origin,
-    }
-    const ai = buildAIProvider(forced)
-    if (!ai) throw new Error('No API key is configured for this provider.')
+  if ((AI_PROVIDER_IDS as readonly string[]).includes(provider)) {
+    const ai = buildNamedAIProvider(provider as AIProviderId, credentials)
+    if (!ai) throw new Error('No credentials are configured for this provider.')
     const reply = await ai.complete([{ role: 'user', content: 'Reply with the single word: ready' }], {
-      maxTokens: 8,
+      maxTokens: 16,
       temperature: 0,
     })
-    return `${ai.name} responded using ${ai.model}: "${reply.trim().slice(0, 40)}"`
+    return `Responded using ${ai.model}: "${reply.trim().slice(0, 40)}"`
   }
+
+  if (provider === 'ai-routing') throw new Error('This is a selector, not a credential.')
 
   if (provider === 'search') {
     const search = buildSearchProvider(credentials)

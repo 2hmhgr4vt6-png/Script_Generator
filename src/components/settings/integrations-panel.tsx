@@ -12,11 +12,11 @@ import { useToast } from '@/components/ui/toast'
 import { INTEGRATIONS, type IntegrationSpec, type IntegrationState } from '@/lib/credentials/registry'
 import { apiFetch, cn, formatRelative } from '@/lib/utils'
 
-const GROUP_LABEL = {
-  ai: 'AI provider',
-  search: 'Web search',
-  social: 'Social sources',
-} as const
+const GROUP_LABEL: Record<string, string> = {
+  ai: 'AI provider — needed to generate anything',
+  search: 'Web search — needed for live research',
+  social: 'Social sources — optional',
+}
 
 export function IntegrationsPanel({
   initialStates,
@@ -29,6 +29,8 @@ export function IntegrationsPanel({
 }) {
   const toast = useToast()
   const [states, setStates] = useState(initialStates)
+  // 'ai-routing' is a selector, not a credential, so it is excluded from counts.
+  const credentialStates = states.filter((state) => state.id !== 'ai-routing')
   const [editing, setEditing] = useState<IntegrationSpec | null>(null)
   const [draft, setDraft] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
@@ -118,6 +120,25 @@ export function IntegrationsPanel({
   }
 
   const groups: IntegrationSpec['group'][] = ['ai', 'search', 'social']
+  const routing = INTEGRATIONS.find((spec) => spec.id === 'ai-routing')!
+  const routingField = routing.fields[0]
+  const activeProvider = stateFor('ai-routing')?.values[routingField.key]?.preview ?? ''
+  const connectedAi = INTEGRATIONS.filter(
+    (spec) => spec.group === 'ai' && stateFor(spec.id)?.connected,
+  )
+
+  async function setActiveProvider(value: string) {
+    try {
+      const result = await apiFetch<{ integrations: IntegrationState[] }>('/api/settings/integrations', {
+        method: 'PUT',
+        body: JSON.stringify({ provider: 'ai-routing', fields: { [routingField.key]: value } }),
+      })
+      setStates(result.integrations)
+      toast.success('Active AI provider updated')
+    } catch (err) {
+      toast.error('Could not update', (err as Error).message)
+    }
+  }
 
   return (
     <Card>
@@ -126,13 +147,29 @@ export function IntegrationsPanel({
           <Plug className="h-3.5 w-3.5 text-accent" /> API keys
         </CardTitle>
         <span className="text-[11px] text-faint">
-          {states.filter((state) => state.connected).length} of {states.length} connected
+          {credentialStates.filter((state) => state.connected).length} of {credentialStates.length} connected
         </span>
       </CardHeader>
       <CardContent className="space-y-5">
         {groups.map((group) => (
           <div key={group}>
             <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-faint">{GROUP_LABEL[group]}</p>
+            {group === 'ai' && connectedAi.length > 1 ? (
+              <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2">
+                <span className="text-[11px] text-muted">Use</span>
+                <Select
+                  value={activeProvider}
+                  onChange={(event) => setActiveProvider(event.target.value)}
+                  className="h-8 w-auto text-xs"
+                >
+                  {routingField.options!.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            ) : null}
             <div className="space-y-2">
               {INTEGRATIONS.filter((spec) => spec.group === group).map((spec) => {
                 const state = stateFor(spec.id)
@@ -146,6 +183,15 @@ export function IntegrationsPanel({
                           aria-hidden
                         />
                         <p className="text-xs font-medium text-ink">{spec.label}</p>
+                        {spec.free ? (
+                          <Badge variant="success" title={spec.free.note}>
+                            {spec.free.label}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" title="This provider requires a payment method.">
+                            Paid
+                          </Badge>
+                        )}
                         {state?.origin === 'env' ? (
                           <Badge variant="outline" title="Value comes from an environment variable">
                             from env
@@ -183,6 +229,12 @@ export function IntegrationsPanel({
                     </div>
 
                     <p className="mt-1.5 text-[11px] leading-relaxed text-muted">{spec.summary}</p>
+                    {spec.free ? (
+                      <p className="mt-1 text-[11px] leading-relaxed text-faint">{spec.free.note}</p>
+                    ) : null}
+                    {spec.caveat ? (
+                      <p className="mt-1 text-[11px] leading-relaxed text-faint">{spec.caveat}</p>
+                    ) : null}
 
                     {connected ? (
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -304,6 +356,7 @@ export function IntegrationsPanel({
 
             {error ? <ErrorState message={error} /> : null}
 
+            {editing.docsUrl ? (
             <a
               href={editing.docsUrl}
               target="_blank"
@@ -312,6 +365,7 @@ export function IntegrationsPanel({
             >
               <ExternalLink className="h-3 w-3" /> Where to get this key
             </a>
+            ) : null}
           </div>
         ) : null}
       </Dialog>

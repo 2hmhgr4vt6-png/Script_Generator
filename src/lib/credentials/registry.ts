@@ -6,7 +6,23 @@
  * incoming field names against it.
  */
 
-export type IntegrationId = 'openai' | 'anthropic' | 'search' | 'reddit' | 'youtube' | 'facebook' | 'instagram'
+export type IntegrationId =
+  | 'ai-routing'
+  | 'gemini'
+  | 'groq'
+  | 'openrouter'
+  | 'ollama'
+  | 'openai'
+  | 'anthropic'
+  | 'search'
+  | 'reddit'
+  | 'youtube'
+  | 'facebook'
+  | 'instagram'
+
+/** AI providers, in the order they are auto-selected when no explicit choice is stored. */
+export const AI_PROVIDER_IDS = ['gemini', 'groq', 'openrouter', 'ollama', 'openai', 'anthropic'] as const
+export type AIProviderId = (typeof AI_PROVIDER_IDS)[number]
 
 export interface IntegrationField {
   /** Also the environment variable name, so env and stored values stay interchangeable. */
@@ -23,21 +39,146 @@ export interface IntegrationField {
 export interface IntegrationSpec {
   id: IntegrationId
   label: string
-  group: 'ai' | 'search' | 'social'
+  group: 'ai' | 'search' | 'social' | 'routing'
   summary: string
   docsUrl: string
   /** Short, honest note about what this integration can actually do. */
   caveat?: string
+  /** Set when the provider has a usable tier that needs no payment method. */
+  free?: { label: string; note: string }
   fields: IntegrationField[]
 }
 
 export const INTEGRATIONS: IntegrationSpec[] = [
+  {
+    id: 'ai-routing',
+    label: 'Active AI provider',
+    group: 'routing',
+    summary: 'Which configured provider writes the scripts.',
+    docsUrl: '',
+    fields: [
+      {
+        key: 'AI_PROVIDER',
+        label: 'Use',
+        secret: false,
+        required: false,
+        options: [
+          { value: '', label: 'Automatic (first one configured)' },
+          { value: 'gemini', label: 'Google Gemini' },
+          { value: 'groq', label: 'Groq' },
+          { value: 'openrouter', label: 'OpenRouter' },
+          { value: 'ollama', label: 'Ollama (local)' },
+          { value: 'openai', label: 'OpenAI' },
+          { value: 'anthropic', label: 'Anthropic' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'gemini',
+    label: 'Google Gemini',
+    group: 'ai',
+    summary: 'Powers fact extraction, hooks, script generation, rewriting and fact checking.',
+    docsUrl: 'https://aistudio.google.com/app/apikey',
+    free: {
+      label: 'Free · no card',
+      note: 'Google AI Studio issues a key with a Google account and no payment method. Flash models are on the free tier; rate limits apply per minute and per day.',
+    },
+    caveat: 'Best free option for Nepali — Gemini handles Devanagari noticeably better than the small open models.',
+    fields: [
+      { key: 'GEMINI_API_KEY', label: 'API key', secret: true, required: true, placeholder: 'AIza…' },
+      {
+        key: 'GEMINI_MODEL',
+        label: 'Model',
+        secret: false,
+        required: false,
+        placeholder: 'gemini-3.8-flash',
+        help: 'A Flash model — those are the ones on the free tier. Pro models require billing.',
+      },
+    ],
+  },
+  {
+    id: 'groq',
+    label: 'Groq',
+    group: 'ai',
+    summary: 'Very fast open-model inference for the same generation work.',
+    docsUrl: 'https://console.groq.com/keys',
+    free: {
+      label: 'Free · no card',
+      note: 'A key takes an email address and about a minute. Free accounts are rate-limited per minute and per day across the whole organisation.',
+    },
+    caveat: 'Fast and genuinely free, but open models are weaker at Nepali than Gemini. Good for English scripts.',
+    fields: [
+      { key: 'GROQ_API_KEY', label: 'API key', secret: true, required: true, placeholder: 'gsk_…' },
+      {
+        key: 'GROQ_MODEL',
+        label: 'Model',
+        secret: false,
+        required: false,
+        placeholder: 'llama-3.3-70b-versatile',
+        help: 'llama-3.3-70b-versatile is the strongest general model; llama-3.1-8b-instant is faster.',
+      },
+    ],
+  },
+  {
+    id: 'openrouter',
+    label: 'OpenRouter',
+    group: 'ai',
+    summary: 'One key, many models — including some offered at no cost.',
+    docsUrl: 'https://openrouter.ai/keys',
+    free: {
+      label: 'Free models',
+      note: 'Models whose id ends in ":free" cost nothing. Check the current list and its limits on openrouter.ai/models before relying on one.',
+    },
+    fields: [
+      { key: 'OPENROUTER_API_KEY', label: 'API key', secret: true, required: true, placeholder: 'sk-or-…' },
+      {
+        key: 'OPENROUTER_MODEL',
+        label: 'Model',
+        secret: false,
+        required: false,
+        placeholder: 'meta-llama/llama-3.3-70b-instruct:free',
+        help: 'Pick one ending in ":free" to stay at no cost.',
+      },
+    ],
+  },
+  {
+    id: 'ollama',
+    label: 'Ollama (local)',
+    group: 'ai',
+    summary: 'Runs a model on your own machine. No key, no account, no limits.',
+    docsUrl: 'https://ollama.com/download',
+    free: {
+      label: 'Free · offline',
+      note: 'Install Ollama, run `ollama pull llama3.1`, and point the studio at it. Nothing leaves your computer.',
+    },
+    caveat: 'Needs a reasonably powerful machine, and quality depends on the model you pull. Only reachable from where the studio runs.',
+    fields: [
+      {
+        key: 'OLLAMA_BASE_URL',
+        label: 'Server URL',
+        secret: false,
+        required: true,
+        placeholder: 'http://localhost:11434/v1',
+        help: 'Ollama\'s OpenAI-compatible endpoint. Keep the /v1 on the end.',
+      },
+      {
+        key: 'OLLAMA_MODEL',
+        label: 'Model',
+        secret: false,
+        required: false,
+        placeholder: 'llama3.1',
+        help: 'Must already be pulled: `ollama pull llama3.1`.',
+      },
+    ],
+  },
   {
     id: 'openai',
     label: 'OpenAI',
     group: 'ai',
     summary: 'Powers fact extraction, hooks, script generation, rewriting and fact checking.',
     docsUrl: 'https://platform.openai.com/api-keys',
+    caveat: 'Requires a payment method — OpenAI has no free API tier. Use Gemini, Groq or Ollama to stay free.',
     fields: [
       { key: 'OPENAI_API_KEY', label: 'API key', secret: true, required: true, placeholder: 'sk-…' },
       {
@@ -64,6 +205,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
     group: 'ai',
     summary: 'Alternative LLM for the same generation and fact-checking work.',
     docsUrl: 'https://console.anthropic.com/settings/keys',
+    caveat: 'Requires a payment method — Anthropic has no free API tier. Use Gemini, Groq or Ollama to stay free.',
     fields: [
       { key: 'ANTHROPIC_API_KEY', label: 'API key', secret: true, required: true, placeholder: 'sk-ant-…' },
       {
@@ -81,7 +223,11 @@ export const INTEGRATIONS: IntegrationSpec[] = [
     label: 'Web search',
     group: 'search',
     summary: 'Searches the live internet for research and finds public discussions for problem discovery.',
-    docsUrl: 'https://tavily.com',
+    docsUrl: 'https://app.tavily.com/home',
+    free: {
+      label: 'Free · no card',
+      note: 'Tavily issues a monthly credit allowance with no payment method. One basic search costs one credit.',
+    },
     fields: [
       {
         key: 'SEARCH_PROVIDER',
@@ -104,6 +250,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
     group: 'social',
     summary: 'Finds public posts where people ask the questions Bhasika answers.',
     docsUrl: 'https://www.reddit.com/prefs/apps',
+    free: { label: 'Free', note: 'Reddit API credentials cost nothing for this kind of read-only use.' },
     caveat: 'Create an app of type "script". Public listings only — no private subreddits, no scraping.',
     fields: [
       { key: 'REDDIT_CLIENT_ID', label: 'Client ID', secret: true, required: true },
@@ -124,6 +271,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
     group: 'social',
     summary: 'Searches public videos on the topics your audience is asking about.',
     docsUrl: 'https://console.cloud.google.com/apis/credentials',
+    free: { label: 'Free quota', note: 'The YouTube Data API has a daily quota that costs nothing. No billing account is needed to use it.' },
     caveat: 'Enable "YouTube Data API v3" on the project before the key will work.',
     fields: [{ key: 'YOUTUBE_API_KEY', label: 'API key', secret: true, required: true, placeholder: 'AIza…' }],
   },

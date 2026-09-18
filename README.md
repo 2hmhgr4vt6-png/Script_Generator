@@ -22,6 +22,7 @@ go from a raw idea to a finished, sourced video script:
 - [Tech stack](#tech-stack)
 - [Quick start](#quick-start)
 - [Access and exposure](#access-and-exposure)
+- [Running it for free](#running-it-for-free)
 - [API keys](#api-keys)
 - [Environment variables](#environment-variables)
 - [Demo mode vs live mode](#demo-mode-vs-live-mode)
@@ -81,7 +82,8 @@ That is the whole setup. There is no sign-in: the app opens straight onto the da
 its single local workspace on first load.
 
 With no API keys the studio runs in **demo mode**: fully usable, with every generated item badged
-*Sample data*.
+*Sample data*. To generate real scripts you need one AI key — see
+**[Running it for free](#running-it-for-free)**, which needs no payment method anywhere.
 
 ---
 
@@ -105,19 +107,93 @@ The same applies to the API routes — `/api/*` is as open as the pages are.
 
 ---
 
+## Running it for free
+
+**You never have to enter a payment method.** OpenAI and Anthropic both require one — that is why
+they ask for a card — but every capability in this studio has a free provider behind it.
+
+The whole thing takes about ten minutes.
+
+### 1. AI provider — Google Gemini (5 minutes)
+
+This is the one that matters: nothing generates without it.
+
+1. Go to **<https://aistudio.google.com/app/apikey>**.
+2. Sign in with any Google account.
+3. Click **Create API key**. No credit card is requested at any point.
+4. Copy the key (it starts with `AIza…`).
+5. In the studio: **Settings → API keys → Google Gemini → Add key**, paste, **Save**, then **Test**.
+
+Gemini's free tier covers the Flash models, which is what the studio defaults to. The Pro models
+need billing, so leave the model field alone unless you know you want to change it. Free usage is
+capped per minute and per day, which is plenty for writing scripts.
+
+**Why Gemini and not Groq for Bhasika?** Gemini handles Devanagari noticeably better. If you write
+mostly in English, Groq is faster and equally free.
+
+### 2. Web search — Tavily (3 minutes)
+
+Needed for live research and for discovering real audience problems. Without it the studio still
+runs, using clearly-labelled sample research.
+
+1. Go to **<https://app.tavily.com/home>** and sign up.
+2. Copy the API key from the dashboard (it starts with `tvly-…`).
+3. **Settings → API keys → Web search → Add key**, choose **Tavily**, paste, **Save**, **Test**.
+
+Tavily's free plan gives a monthly credit allowance with no card. One search costs one credit.
+
+### 3. Reddit — optional, free (5 minutes)
+
+This is where the most useful audience questions come from.
+
+1. Go to **<https://www.reddit.com/prefs/apps>** → **create another app…**
+2. Choose type **script**, put anything in the redirect field (`http://localhost:3000`).
+3. The **client ID** is the short string under the app name; the **secret** is labelled.
+4. **Settings → API keys → Reddit → Add key**, paste both, set a user agent like
+   `bhasika-content-studio/1.0 by u/yourname`, **Save**, **Test**.
+
+### 4. YouTube — optional, free quota
+
+Google Cloud → create a project → enable **YouTube Data API v3** → create an API key. The daily
+quota costs nothing and no billing account is required.
+
+### Other free AI options
+
+| Provider | Cost | Good for | Sign-up |
+| --- | --- | --- | --- |
+| **Google Gemini** | Free, no card | **Recommended.** Best Nepali quality of the free options | <https://aistudio.google.com/app/apikey> |
+| **Groq** | Free, no card | Very fast; English scripts | <https://console.groq.com/keys> |
+| **OpenRouter** | Free models available | Trying several models with one key — use ids ending in `:free` | <https://openrouter.ai/keys> |
+| **Ollama** | Free, offline | No account at all; runs on your own machine | <https://ollama.com/download> |
+
+**Ollama** is worth knowing about if you would rather nothing left your computer: install it, run
+`ollama pull llama3.1`, then point the studio at `http://localhost:11434/v1`. No key, no limits, no
+account — but it needs a reasonably powerful machine, and small local models write weaker Nepali.
+
+If you configure more than one, a **Use** selector appears at the top of the AI section so you can
+pick which one writes. On *Automatic* the studio prefers the free providers.
+
+> Free tiers and model names change. Every figure above was checked in September 2026 — if something
+> looks different, trust the provider's own pricing page over this file.
+
+---
+
 ## API keys
 
-Every provider key can be entered in **Settings → API keys**. No file editing, no redeploy.
+Every provider key is entered in **Settings → API keys**. No file editing, no redeploy.
 
-| Integration | What it unlocks | Where to get a key |
+| Integration | Cost | What it unlocks |
 | --- | --- | --- |
-| OpenAI | Fact extraction, hooks, script generation, rewriting, fact checking | <https://platform.openai.com/api-keys> |
-| Anthropic | The same, on Claude instead | <https://console.anthropic.com/settings/keys> |
-| Web search (Tavily / Serper / Exa) | Live internet research and public-discussion discovery | <https://tavily.com> · <https://serper.dev> · <https://exa.ai> |
-| Reddit | Public posts where your audience asks questions | <https://www.reddit.com/prefs/apps> (app type: **script**) |
-| YouTube | Public video search | Google Cloud → enable **YouTube Data API v3** |
-| Facebook | Posts and comments on the Page the token manages | <https://developers.facebook.com/tools/explorer/> |
-| Instagram | Media and captions on the Business account the token manages | <https://developers.facebook.com/docs/instagram-api/> |
+| Google Gemini | Free, no card | Fact extraction, hooks, script generation, rewriting, fact checking |
+| Groq | Free, no card | The same, on fast open models |
+| OpenRouter | Free models available | The same, across many models |
+| Ollama | Free, offline | The same, on your own machine |
+| OpenAI | **Paid only** | The same |
+| Anthropic | **Paid only** | The same |
+| Web search (Tavily / Serper / Exa) | Tavily free, no card | Live internet research and public-discussion discovery |
+| Reddit | Free | Public posts where your audience asks questions |
+| YouTube | Free quota | Public video search |
+| Facebook / Instagram | Meta app required | Posts on the Page or account the token manages |
 
 ### How keys are handled
 
@@ -133,8 +209,8 @@ Every provider key can be entered in **Settings → API keys**. No file editing,
   in Settings overrides the matching variable. Existing `.env` deployments need no changes.
 - **Removable.** Deleting a stored credential falls back to the environment variable if one is set.
 
-Non-secret settings live alongside the keys: the model name and base URL for OpenAI (so you can point
-at Azure, a gateway or a local server), the model for Anthropic, the search provider, and the Reddit
+Non-secret settings live alongside the keys: the model for each provider, the base URL for OpenAI and
+Ollama (so you can point at Azure, a gateway or a local server), the search provider, and the Reddit
 user agent.
 
 > Because the studio has no sign-in, anyone who can reach it can *use* these keys, even though they
@@ -156,8 +232,12 @@ the settings that can only come from the environment.
 | `CREDENTIALS_SECRET` | **recommended** | Encrypts keys stored via Settings. Without it, a key file is generated locally |
 | `DATABASE_URL` | no | Postgres/Supabase. Without it, a local JSON store is used |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | no | Supabase project details |
-| `AI_PROVIDER` | no | `openai` or `anthropic` |
-| `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL` | no | OpenAI or any OpenAI-compatible endpoint |
+| `AI_PROVIDER` | no | `gemini`, `groq`, `openrouter`, `ollama`, `openai` or `anthropic`. Unset = first one configured |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | no | Google Gemini (free tier, no card) |
+| `GROQ_API_KEY`, `GROQ_MODEL` | no | Groq (free tier, no card) |
+| `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | no | OpenRouter (free models available) |
+| `OLLAMA_BASE_URL`, `OLLAMA_MODEL` | no | A local Ollama server — no key needed |
+| `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL` | no | OpenAI, or any OpenAI-compatible endpoint |
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | no | Anthropic |
 | `SEARCH_PROVIDER`, `SEARCH_API_KEY` | no | `tavily` (default), `serper`, or `exa` |
 | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USER_AGENT` | no | Reddit official API |
@@ -216,12 +296,24 @@ default.
 
 ### AI provider
 
-Either works; the studio picks OpenAI by default and falls back to whichever key is present. Add the
-key in **Settings → API keys**, or set it in the environment.
+Six are supported. Add the key in **Settings → API keys**, or set it in the environment. When more
+than one is configured, `AI_PROVIDER` (or the **Use** selector in Settings) picks the active one;
+left unset, the studio takes the first configured provider in free-first order.
 
-- **OpenAI** — `OPENAI_API_KEY`. `OPENAI_BASE_URL` points at any OpenAI-compatible endpoint (Azure, a
-  local model server, an internal gateway).
-- **Anthropic** — `ANTHROPIC_API_KEY`, and `AI_PROVIDER=anthropic` to prefer it when both are set.
+Gemini, Groq, OpenRouter and Ollama all speak the OpenAI chat-completions protocol, so they are
+presets over a single client rather than separate implementations:
+
+| `AI_PROVIDER` | Endpoint | Key |
+| --- | --- | --- |
+| `gemini` | `generativelanguage.googleapis.com/v1beta/openai` | `GEMINI_API_KEY` |
+| `groq` | `api.groq.com/openai/v1` | `GROQ_API_KEY` |
+| `openrouter` | `openrouter.ai/api/v1` | `OPENROUTER_API_KEY` |
+| `ollama` | `OLLAMA_BASE_URL` (default `localhost:11434/v1`) | none |
+| `openai` | `OPENAI_BASE_URL` (default `api.openai.com/v1`) | `OPENAI_API_KEY` |
+| `anthropic` | `api.anthropic.com` | `ANTHROPIC_API_KEY` |
+
+Because OpenAI's preset honours `OPENAI_BASE_URL`, any other OpenAI-compatible endpoint (Azure, an
+internal gateway, a self-hosted server) works without new code.
 
 Without a key: research still searches and stores sources, but facts are not extracted, and hooks and
 scripts come from the labelled demo generator. AI editing and fact checking return a clear

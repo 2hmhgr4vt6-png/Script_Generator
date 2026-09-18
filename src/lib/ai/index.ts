@@ -1,36 +1,102 @@
 import 'server-only'
-import { workspaceCredentials, type ResolvedCredentials } from '@/lib/credentials'
+import { AI_PROVIDER_IDS, workspaceCredentials, type AIProviderId, type ResolvedCredentials } from '@/lib/credentials'
 import { AnthropicProvider } from './providers/anthropic'
 import { OpenAIProvider } from './providers/openai'
 import type { AIProvider } from './types'
 
 export * from './types'
 
-const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
-const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1'
-const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-5'
+/**
+ * Gemini, Groq, OpenRouter and Ollama all speak the OpenAI chat-completions
+ * protocol, so they are presets over one client rather than separate
+ * implementations. Only Anthropic needs its own shape.
+ */
+interface OpenAICompatiblePreset {
+  keyField: string
+  modelField: string
+  defaultModel: string
+  baseUrl: string
+  /** Ollama runs locally and authenticates nothing. */
+  keyless?: boolean
+  baseUrlField?: string
+}
+
+const PRESETS: Record<string, OpenAICompatiblePreset> = {
+  gemini: {
+    keyField: 'GEMINI_API_KEY',
+    modelField: 'GEMINI_MODEL',
+    defaultModel: 'gemini-3.8-flash',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+  },
+  groq: {
+    keyField: 'GROQ_API_KEY',
+    modelField: 'GROQ_MODEL',
+    defaultModel: 'llama-3.3-70b-versatile',
+    baseUrl: 'https://api.groq.com/openai/v1',
+  },
+  openrouter: {
+    keyField: 'OPENROUTER_API_KEY',
+    modelField: 'OPENROUTER_MODEL',
+    defaultModel: 'meta-llama/llama-3.3-70b-instruct:free',
+    baseUrl: 'https://openrouter.ai/api/v1',
+  },
+  ollama: {
+    keyField: '',
+    modelField: 'OLLAMA_MODEL',
+    defaultModel: 'llama3.1',
+    baseUrl: 'http://localhost:11434/v1',
+    baseUrlField: 'OLLAMA_BASE_URL',
+    keyless: true,
+  },
+  openai: {
+    keyField: 'OPENAI_API_KEY',
+    modelField: 'OPENAI_MODEL',
+    defaultModel: 'gpt-4o-mini',
+    baseUrl: 'https://api.openai.com/v1',
+    baseUrlField: 'OPENAI_BASE_URL',
+  },
+}
+
+const ANTHROPIC_DEFAULT_MODEL = 'claude-sonnet-5'
+
+/** Builds one named provider, or null when it has no usable credentials. */
+export function buildNamedAIProvider(id: AIProviderId, credentials: ResolvedCredentials): AIProvider | null {
+  if (id === 'anthropic') {
+    const key = credentials.get('ANTHROPIC_API_KEY')
+    if (!key) return null
+    return new AnthropicProvider(key, credentials.get('ANTHROPIC_MODEL') ?? ANTHROPIC_DEFAULT_MODEL)
+  }
+
+  const preset = PRESETS[id]
+  if (!preset) return null
+
+  const baseUrl = (preset.baseUrlField ? credentials.get(preset.baseUrlField) : undefined) ?? preset.baseUrl
+  const model = credentials.get(preset.modelField) ?? preset.defaultModel
+
+  if (preset.keyless) {
+    // Only counts as configured once the user has actually pointed at a server.
+    if (!preset.baseUrlField || !credentials.get(preset.baseUrlField)) return null
+    return new OpenAIProvider('ollama', model, baseUrl, id)
+  }
+
+  const key = credentials.get(preset.keyField)
+  if (!key) return null
+  return new OpenAIProvider(key, model, baseUrl, id)
+}
 
 /**
- * Builds the configured LLM from resolved credentials (Settings first, then
- * environment). Returns null when no key is available — callers then fall back
- * to clearly-labelled demo generation rather than inventing live-looking output.
+ * Resolves the provider to use: the explicit choice when one is stored,
+ * otherwise the first configured provider in AI_PROVIDER_IDS order — which puts
+ * the no-payment-method options first.
  */
 export function buildAIProvider(credentials: ResolvedCredentials): AIProvider | null {
-  const preferred = credentials.get('AI_PROVIDER')?.toLowerCase()
-  const openaiKey = credentials.get('OPENAI_API_KEY')
-  const anthropicKey = credentials.get('ANTHROPIC_API_KEY')
-
-  if (preferred === 'anthropic' || (!preferred && !openaiKey && anthropicKey)) {
-    if (!anthropicKey) return null
-    return new AnthropicProvider(anthropicKey, credentials.get('ANTHROPIC_MODEL') ?? DEFAULT_ANTHROPIC_MODEL)
+  const chosen = credentials.get('AI_PROVIDER')?.toLowerCase() as AIProviderId | undefined
+  if (chosen && (AI_PROVIDER_IDS as readonly string[]).includes(chosen)) {
+    return buildNamedAIProvider(chosen, credentials)
   }
-  if (preferred === 'openai' || !preferred) {
-    if (!openaiKey) return null
-    return new OpenAIProvider(
-      openaiKey,
-      credentials.get('OPENAI_MODEL') ?? DEFAULT_OPENAI_MODEL,
-      credentials.get('OPENAI_BASE_URL') ?? DEFAULT_OPENAI_BASE_URL,
-    )
+  for (const id of AI_PROVIDER_IDS) {
+    const provider = buildNamedAIProvider(id, credentials)
+    if (provider) return provider
   }
   return null
 }

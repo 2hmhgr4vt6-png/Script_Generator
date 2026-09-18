@@ -57,8 +57,11 @@ export function Sidebar({ demoMode }: { demoMode: boolean }) {
         <div className="m-3 rounded-lg border border-warning/25 bg-warning/5 p-3">
           <p className="text-[11px] font-medium text-warning">Demo mode</p>
           <p className="mt-1 text-[11px] leading-relaxed text-muted">
-            Generated content is sample data. Add API keys in Settings for live research.
+            Generated content is sample data. Free API keys need no payment method.
           </p>
+          <Link href="/settings" className="mt-2 inline-block text-[11px] font-medium text-accent hover:underline">
+            Set up a free provider →
+          </Link>
         </div>
       ) : null}
     </aside>
