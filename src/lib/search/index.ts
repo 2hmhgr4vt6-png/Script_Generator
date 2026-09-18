@@ -19,7 +19,7 @@ export function buildSearchProvider(credentials: ResolvedCredentials): SearchPro
       return new ExaProvider(apiKey)
     case 'tavily':
     default:
-      return new TavilyProvider(apiKey)
+      return new TavilyProvider(apiKey, credentials.get('SEARCH_BASE_URL'))
   }
 }
 

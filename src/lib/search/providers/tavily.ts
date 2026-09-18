@@ -5,10 +5,14 @@ export class TavilyProvider implements SearchProvider {
   readonly name = 'tavily'
   readonly isLive = true
 
-  constructor(private apiKey: string) {}
+  constructor(
+    private apiKey: string,
+    /** Overridable so the API can be reached through a proxy or mirror. */
+    private baseUrl = 'https://api.tavily.com',
+  ) {}
 
   async search(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
-    const response = await fetch('https://api.tavily.com/search', {
+    const response = await fetch(`${this.baseUrl}/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

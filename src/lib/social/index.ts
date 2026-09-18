@@ -1,9 +1,11 @@
 import 'server-only'
+import { buildSearchProvider } from '@/lib/search'
 import { workspaceCredentials, type ResolvedCredentials } from '@/lib/credentials'
 import { FacebookProvider, InstagramProvider } from './providers/meta'
 import { RedditProvider } from './providers/reddit'
 import { RedditPublicProvider } from './providers/reddit-public'
 import { StackExchangeProvider } from './providers/stackexchange'
+import { TikTokProvider } from './providers/tiktok'
 import { YouTubeProvider } from './providers/youtube'
 import type { SocialProvider, SocialStatus } from './types'
 
@@ -22,6 +24,8 @@ export function buildSocialProviders(credentials: ResolvedCredentials): SocialPr
     // The authenticated Reddit API is richer; its public feed is the fallback.
     reddit.status().connected ? reddit : new RedditPublicProvider(credentials.get('REDDIT_PUBLIC_BASE_URL')),
     new YouTubeProvider(credentials.get('YOUTUBE_API_KEY'), credentials.get('YOUTUBE_BASE_URL')),
+    // TikTok has no public API; it is reached through the search provider.
+    new TikTokProvider(buildSearchProvider(credentials)),
     new FacebookProvider(credentials.get('FACEBOOK_ACCESS_TOKEN')),
     new InstagramProvider(credentials.get('INSTAGRAM_ACCESS_TOKEN')),
   ]

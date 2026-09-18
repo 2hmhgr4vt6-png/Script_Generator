@@ -210,9 +210,11 @@ export function IntegrationsPanel({
                         ) : null}
                       </div>
                       <div className="flex items-center gap-1">
-                        <Button size="sm" variant="outline" onClick={() => openEditor(spec)}>
-                          <KeyRound className="h-3.5 w-3.5" /> {connected ? 'Update' : 'Add key'}
-                        </Button>
+                        {spec.fields.length ? (
+                          <Button size="sm" variant="outline" onClick={() => openEditor(spec)}>
+                            <KeyRound className="h-3.5 w-3.5" /> {connected ? 'Update' : 'Add key'}
+                          </Button>
+                        ) : null}
                         <Button
                           size="sm"
                           variant="ghost"

@@ -4,6 +4,7 @@ import { workspaceCredentials } from '@/lib/credentials'
 import { getStore, newId, now } from '@/lib/db'
 import { BHASIKA_SYSTEM } from '@/lib/scripts/prompts'
 import { buildSocialProviders } from '@/lib/social'
+import { TikTokProvider } from '@/lib/social/providers/tiktok'
 import { YouTubeProvider } from '@/lib/social/providers/youtube'
 import { fetchGoogleTrends } from './sources'
 import type { TrendAngle, TrendItem, TrendScan } from './types'
@@ -59,8 +60,33 @@ export async function runTrendScan(input: TrendScanInput): Promise<TrendScan> {
     notes.push('YouTube is not connected — add a free key in Settings to include its trending chart.')
   }
 
+  // TikTok topic hubs, found through search. Not a trending chart — TikTok
+  // publishes none — but a real read on which topics the platform has pages for.
+  const tiktok = buildSocialProviders(credentials).find((p): p is TikTokProvider => p instanceof TikTokProvider)
+  if (tiktok?.status().connected) {
+    try {
+      const topics = await tiktok.topics('study in Germany Nepali student', 10)
+      trends.push(
+        ...topics.map((topic) => ({
+          id: topic.id,
+          source: 'tiktok' as const,
+          title: topic.title,
+          url: topic.url,
+          volume: null,
+          volumeValue: null,
+          capturedAt: now(),
+          relatedQueries: [],
+        })),
+      )
+    } catch (error) {
+      notes.push(`TikTok: ${(error as Error).message}`)
+    }
+  } else {
+    notes.push('TikTok needs the web search provider — add a search key in Settings to include it.')
+  }
+
   notes.push(
-    'TikTok and Instagram publish no trending API, so their hashtag trends cannot be included. What is here is Google search trends and, when connected, YouTube.',
+    'TikTok is reached through public web search, because its Research API excludes commercial users and it has no public search endpoint. That gives topics and videos but no view counts. Instagram publishes no trending API at all.',
   )
 
   trends.sort((a, b) => (b.volumeValue ?? 0) - (a.volumeValue ?? 0))

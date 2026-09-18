@@ -17,6 +17,7 @@ export type IntegrationId =
   | 'anthropic'
   | 'search'
   | 'stackexchange'
+  | 'tiktok'
   | 'reddit'
   | 'youtube'
   | 'facebook'
@@ -55,6 +56,11 @@ export interface IntegrationSpec {
   caveat?: string
   /** Set when the provider has a usable tier that needs no payment method. */
   free?: { label: string; note: string }
+  /**
+   * This integration has no credentials of its own and is usable only when
+   * another one is configured — TikTok, which rides the search provider.
+   */
+  dependsOn?: IntegrationId
   fields: IntegrationField[]
 }
 
@@ -308,6 +314,21 @@ export const INTEGRATIONS: IntegrationSpec[] = [
       },
       { key: 'SEARCH_API_KEY', label: 'API key', secret: true, required: true, placeholder: 'tvly-… / your key' },
     ],
+  },
+  {
+    id: 'tiktok',
+    label: 'TikTok',
+    group: 'social',
+    summary: 'Finds TikTok videos and topic pages about studying in Germany.',
+    docsUrl: 'https://developers.tiktok.com/products/research-api',
+    free: {
+      label: 'Free · via web search',
+      note: 'No separate key. TikTok is reached through whichever search provider you configured.',
+    },
+    caveat:
+      'TikTok has no public search API, and its Research API is restricted to academic and non-profit researchers — commercial users are ineligible. So TikTok is reached through public web search: real videos, captions and topic pages, but no view or like counts, since reading those would mean scraping the page.',
+    dependsOn: 'search',
+    fields: [],
   },
   {
     id: 'stackexchange',

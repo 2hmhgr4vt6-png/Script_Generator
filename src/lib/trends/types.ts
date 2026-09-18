@@ -51,7 +51,7 @@ export interface PerformanceReport {
 /** A term or topic currently getting attention, from a platform that publishes such a list. */
 export interface TrendItem {
   id: string
-  source: 'google-trends' | 'youtube'
+  source: 'google-trends' | 'youtube' | 'tiktok'
   title: string
   url: string | null
   /** Google Trends reports an approximate search volume; YouTube reports views. */

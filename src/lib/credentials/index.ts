@@ -199,7 +199,11 @@ export async function integrationStates(userId: string): Promise<IntegrationStat
     }
 
     const required = spec.fields.filter((field) => field.required)
-    const connected = required.every((field) => values[field.key].set)
+    // An integration with no credentials of its own is connected exactly when
+    // the one it rides on is.
+    const connected = spec.dependsOn
+      ? Boolean(dependencySatisfied(spec.dependsOn, decrypted))
+      : required.every((field) => values[field.key].set)
     const origin: CredentialOrigin = required.some((f) => values[f.key].origin === 'stored')
       ? 'stored'
       : required.some((f) => values[f.key].origin === 'env')
@@ -218,6 +222,16 @@ export async function integrationStates(userId: string): Promise<IntegrationStat
       lastTestMessage: row?.last_test_message ?? null,
     }
   })
+}
+
+/** Whether the integration another one depends on has its required fields. */
+function dependencySatisfied(id: IntegrationId, decrypted: Map<string, Record<string, string>>): boolean {
+  const spec = INTEGRATIONS.find((entry) => entry.id === id)
+  if (!spec) return false
+  const stored = decrypted.get(id) ?? {}
+  return spec.fields
+    .filter((field) => field.required)
+    .every((field) => Boolean(stored[field.key]?.trim() || process.env[field.key]?.trim()))
 }
 
 export async function credentialsHealth(): Promise<{ generatedKey: boolean }> {

@@ -172,7 +172,7 @@ There is no lawful way to search every platform. What each one actually permits:
 | **YouTube** | Public video search via the official API. |
 | **Web at large** | Forum and Q&A threads surface through the search provider. |
 | **Facebook / Instagram** | No platform-wide public search exists. A Meta token reaches only the Page or account it manages — so this reads your own comments, nothing more. |
-| **TikTok** | No public search API for this purpose. |
+| **TikTok** | Searchable through public web search. Real videos, captions and TikTok's own topic pages — but no view counts. Its Research API is restricted to academic and non-profit researchers; commercial users are explicitly ineligible. |
 
 Anything claiming to monitor "all social media" is either scraping against platform terms or
 reselling one of the above. This studio uses official APIs and public feeds only.
@@ -276,6 +276,7 @@ Every provider key is entered in **Settings → API keys**. No file editing, no 
 | Anthropic | **Paid only** | The same |
 | Web search (Tavily / Serper / Exa) | Tavily free, no card | Live internet research and public-discussion discovery |
 | Reddit | Free, optional | Public feed needs no key; credentials raise the limits |
+| TikTok | Free, no separate key | Videos and topic pages, through whichever search provider you configured |
 | Stack Exchange | Free, on by default | Visa, admission and recognition questions. Optional key raises the daily cap |
 | YouTube | Free quota | Public video search |
 | Facebook / Instagram | Meta app required | Posts on the Page or account the token manages |
@@ -364,8 +365,12 @@ to leave irrelevant trends out rather than force a connection, to never ride a t
 political conflict, and to flag anything that risks looking opportunistic. An empty result is a
 valid answer — most of what trends has nothing to do with studying in Germany.
 
-**Not covered:** TikTok and Instagram publish no trending API, so their hashtag trends cannot be
-included. The Coverage panel says so on the page rather than letting you assume otherwise.
+**TikTok** appears through public web search rather than an API, contributing the topic pages
+TikTok itself maintains — a real read on what the platform treats as a subject. View counts are not
+included, because they exist only on the rendered page and reading them would mean scraping.
+
+**Not covered:** Instagram publishes no trending API. TikTok publishes no trending chart either;
+what is here is its indexed topic pages, not a hashtag leaderboard.
 
 ---
 
@@ -464,6 +469,22 @@ Research runs several queries per idea, including one restricted to the priority
 study-in-germany.de, uni-assist, anabin, Make it in Germany, the Federal Foreign Office, the embassy,
 Hochschulkompass). If every query fails, the session is marked **error** with the provider's own
 message — it never reports an empty-but-successful search.
+
+### TikTok
+
+No key of its own. TikTok is reached through whichever search provider you configured, so it turns
+on as soon as web search does.
+
+**Why not the TikTok API?** TikTok's Research API is limited to qualifying academic institutions and
+registered non-profits; creators, advertisers and commercial users are explicitly ineligible. Its
+other APIs cover posting and your own account only. There is no public search endpoint. Public web
+search is therefore the legitimate route — it reads indexed pages, exactly as a search engine does,
+and does not scrape.
+
+**What you get:** video URLs, captions, creator handles, and TikTok's `/discover/` topic pages.
+**What you do not get:** view, like and comment counts. Those are rendered on the page and obtaining
+them would require scraping, which this deliberately does not do. If you need TikTok engagement
+metrics, that requires a licensed third-party data provider, which is a paid service.
 
 ### Stack Exchange
 
@@ -668,8 +689,9 @@ Stated plainly rather than papered over:
 - **Performance is measured on the platforms that report it**, which means YouTube above all.
   Without that key the feature has very little to rank. It also measures what is popular among
   *search results for your topic*, not the whole platform.
-- **Trends cover search and YouTube only.** TikTok and Instagram hashtag trends are not obtainable
-  through any public API.
+- **TikTok has no engagement numbers here.** Discovery works through public search, so you get
+  videos, captions and topic pages but no view counts — those need a paid licensed data provider.
+- **Instagram hashtag trends are not obtainable** through any public API.
 - **Fact checking is an assistant, not an approver.** It checks the script against the attached
   sources only. A human still reads anything about fees, deadlines or visa rules before it ships.
 
