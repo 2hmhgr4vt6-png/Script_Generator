@@ -6,6 +6,7 @@ build
 .env.local
 .env*.local
 data/*.json
+data/*.key
 !data/.gitkeep
 .DS_Store
 *.pem

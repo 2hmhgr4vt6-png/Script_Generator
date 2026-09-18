@@ -17,6 +17,6 @@ export async function GET(request: NextRequest) {
       language: (params.get('language') as never) ?? undefined,
       q: params.get('q') ?? undefined,
     })
-    return { problems, sources: socialStatuses() }
+    return { problems, sources: await socialStatuses() }
   })
 }

@@ -1,4 +1,5 @@
 import 'server-only'
+import { workspaceCredentials, type ResolvedCredentials } from '@/lib/credentials'
 import { FacebookProvider, InstagramProvider } from './providers/meta'
 import { RedditProvider } from './providers/reddit'
 import { YouTubeProvider } from './providers/youtube'
@@ -6,18 +7,31 @@ import type { SocialProvider, SocialStatus } from './types'
 
 export * from './types'
 
-export function getSocialProviders(): SocialProvider[] {
-  return [new RedditProvider(), new YouTubeProvider(), new FacebookProvider(), new InstagramProvider()]
+export function buildSocialProviders(credentials: ResolvedCredentials): SocialProvider[] {
+  return [
+    new RedditProvider(
+      credentials.get('REDDIT_CLIENT_ID'),
+      credentials.get('REDDIT_CLIENT_SECRET'),
+      credentials.get('REDDIT_USER_AGENT'),
+    ),
+    new YouTubeProvider(credentials.get('YOUTUBE_API_KEY')),
+    new FacebookProvider(credentials.get('FACEBOOK_ACCESS_TOKEN')),
+    new InstagramProvider(credentials.get('INSTAGRAM_ACCESS_TOKEN')),
+  ]
 }
 
-export function getSocialProvider(id: string): SocialProvider | undefined {
-  return getSocialProviders().find((p) => p.id === id)
+export async function getSocialProviders(): Promise<SocialProvider[]> {
+  return buildSocialProviders(await workspaceCredentials())
 }
 
-export function socialStatuses(): SocialStatus[] {
-  return getSocialProviders().map((p) => p.status())
+export async function getSocialProvider(id: string): Promise<SocialProvider | undefined> {
+  return (await getSocialProviders()).find((provider) => provider.id === id)
 }
 
-export function connectedSocialProviders(): SocialProvider[] {
-  return getSocialProviders().filter((p) => p.status().connected)
+export async function socialStatuses(): Promise<SocialStatus[]> {
+  return (await getSocialProviders()).map((provider) => provider.status())
+}
+
+export async function connectedSocialProviders(): Promise<SocialProvider[]> {
+  return (await getSocialProviders()).filter((provider) => provider.status().connected)
 }

@@ -1,5 +1,4 @@
 import 'server-only'
-import { env } from '@/lib/env'
 import { SocialProviderError, type SocialPost, type SocialProvider, type SocialStatus } from '../types'
 
 /**
@@ -13,12 +12,13 @@ import { SocialProviderError, type SocialPost, type SocialProvider, type SocialS
 abstract class MetaProvider implements SocialProvider {
   abstract readonly id: string
   abstract readonly label: string
-  protected abstract token(): string | undefined
   protected abstract envVar: string
   protected abstract edge: string
 
+  constructor(protected accessToken: string | undefined) {}
+
   status(): SocialStatus {
-    const connected = Boolean(this.token())
+    const connected = Boolean(this.accessToken)
     return {
       id: this.id,
       label: this.label,
@@ -31,17 +31,26 @@ abstract class MetaProvider implements SocialProvider {
     }
   }
 
+  async verify(): Promise<void> {
+    await this.discover('', { limit: 1 })
+  }
+
   async discover(query: string, options: { limit?: number } = {}): Promise<SocialPost[]> {
-    const token = this.token()
-    if (!token) throw new SocialProviderError(`${this.label} is not connected.`, 'not-connected')
+    if (!this.accessToken) throw new SocialProviderError(`${this.label} is not connected.`, 'not-connected')
 
     const url = new URL(`https://graph.facebook.com/v21.0/${this.edge}`)
-    url.searchParams.set('access_token', token)
+    url.searchParams.set('access_token', this.accessToken)
     url.searchParams.set('limit', String(options.limit ?? 25))
 
     const response = await fetch(url)
     if (response.status === 400 || response.status === 401) {
-      throw new SocialProviderError(`${this.label} rejected the access token.`, 'invalid-key')
+      const detail = (await response.json().catch(() => null)) as { error?: { message?: string } } | null
+      throw new SocialProviderError(
+        detail?.error?.message
+          ? `${this.label}: ${detail.error.message}`
+          : `${this.label} rejected the access token.`,
+        'invalid-key',
+      )
     }
     if (!response.ok) throw new SocialProviderError(`${this.label} request failed (${response.status}).`)
 
@@ -69,9 +78,6 @@ export class FacebookProvider extends MetaProvider {
   readonly label = 'Facebook'
   protected envVar = 'FACEBOOK_ACCESS_TOKEN'
   protected edge = 'me/feed?fields=id,message,permalink_url,created_time'
-  protected token() {
-    return env.facebookAccessToken
-  }
 }
 
 export class InstagramProvider extends MetaProvider {
@@ -79,7 +85,4 @@ export class InstagramProvider extends MetaProvider {
   readonly label = 'Instagram'
   protected envVar = 'INSTAGRAM_ACCESS_TOKEN'
   protected edge = 'me/media?fields=id,caption,permalink,timestamp'
-  protected token() {
-    return env.instagramAccessToken
-  }
 }

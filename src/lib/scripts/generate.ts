@@ -27,7 +27,7 @@ const HEADINGS: Record<Language, Record<ScriptSection['key'], string>> = {
 export async function generateScript(input: GenerateInput): Promise<GenerateOutcome> {
   const language = input.idea.language ?? 'ne'
   const duration = input.idea.duration_seconds ?? 60
-  const ai = getAIProvider()
+  const ai = await getAIProvider()
 
   if (!ai) return demoScript(input, language, duration)
 

@@ -22,6 +22,7 @@ go from a raw idea to a finished, sourced video script:
 - [Tech stack](#tech-stack)
 - [Quick start](#quick-start)
 - [Access and exposure](#access-and-exposure)
+- [API keys](#api-keys)
 - [Environment variables](#environment-variables)
 - [Demo mode vs live mode](#demo-mode-vs-live-mode)
 - [Database](#database)
@@ -40,6 +41,7 @@ go from a raw idea to a finished, sourced video script:
 | Area | What is implemented |
 | --- | --- |
 | **Access** | No sign-in. Open the URL and start working — see [Access and exposure](#access-and-exposure) |
+| **API keys** | Added in Settings, encrypted at rest, verified with a real call per provider — see [API keys](#api-keys) |
 | **Raw ideas** | Full brief capture — topic, language, duration (incl. custom), content type, audience, platform, tone — with auto-categorisation |
 | **Research** | AI query planning → multi-query search → source classification (official / government / university / news / community / blog) → fact extraction with verification status → conflict detection |
 | **Problem discovery** | Reddit (official OAuth API), YouTube Data API, Meta Graph API, plus web search; question detection, topic classification, relevance scoring, dedupe by source URL |
@@ -103,13 +105,55 @@ The same applies to the API routes — `/api/*` is as open as the pages are.
 
 ---
 
+## API keys
+
+Every provider key can be entered in **Settings → API keys**. No file editing, no redeploy.
+
+| Integration | What it unlocks | Where to get a key |
+| --- | --- | --- |
+| OpenAI | Fact extraction, hooks, script generation, rewriting, fact checking | <https://platform.openai.com/api-keys> |
+| Anthropic | The same, on Claude instead | <https://console.anthropic.com/settings/keys> |
+| Web search (Tavily / Serper / Exa) | Live internet research and public-discussion discovery | <https://tavily.com> · <https://serper.dev> · <https://exa.ai> |
+| Reddit | Public posts where your audience asks questions | <https://www.reddit.com/prefs/apps> (app type: **script**) |
+| YouTube | Public video search | Google Cloud → enable **YouTube Data API v3** |
+| Facebook | Posts and comments on the Page the token manages | <https://developers.facebook.com/tools/explorer/> |
+| Instagram | Media and captions on the Business account the token manages | <https://developers.facebook.com/docs/instagram-api/> |
+
+### How keys are handled
+
+- **Encrypted at rest.** Secrets are sealed with AES-256-GCM before they touch the database. The key
+  comes from `CREDENTIALS_SECRET`; without it one is generated into `data/credentials.key` so local
+  development needs no setup, and Settings warns you to set the variable before deploying.
+- **Write-only.** A saved secret is never sent back to the browser. Settings shows the last four
+  characters so you can tell which key is in place. Leaving a secret field blank keeps the stored one.
+- **Verified, not assumed.** **Test** makes the cheapest real call the provider allows — a one-token
+  completion, a three-result search, an OAuth token fetch — and shows the provider's own answer. So
+  "Verified" means the key works, not merely that a value is present.
+- **Environment variables still work.** They are the fallback when nothing is stored, and a key saved
+  in Settings overrides the matching variable. Existing `.env` deployments need no changes.
+- **Removable.** Deleting a stored credential falls back to the environment variable if one is set.
+
+Non-secret settings live alongside the keys: the model name and base URL for OpenAI (so you can point
+at Azure, a gateway or a local server), the model for Anthropic, the search provider, and the Reddit
+user agent.
+
+> Because the studio has no sign-in, anyone who can reach it can *use* these keys, even though they
+> cannot read them back. Keep it on localhost or behind your own access control, and prefer keys with
+> spending limits.
+
+---
+
 ## Environment variables
 
 Everything lives in `.env.local` (git-ignored). `.env.example` is the template.
 
+Provider keys are easier to manage in [Settings → API keys](#api-keys); these are the fallback, plus
+the settings that can only come from the environment.
+
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `NEXT_PUBLIC_APP_URL` | no | Public base URL |
+| `CREDENTIALS_SECRET` | **recommended** | Encrypts keys stored via Settings. Without it, a key file is generated locally |
 | `DATABASE_URL` | no | Postgres/Supabase. Without it, a local JSON store is used |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | no | Supabase project details |
 | `AI_PROVIDER` | no | `openai` or `anthropic` |
@@ -155,8 +199,8 @@ npm run db:migrate
 Or apply `supabase/migrations/0001_init.sql` through the Supabase SQL editor.
 
 The schema creates `users`, `user_preferences`, `ideas`, `research_sessions`, `research_sources`,
-`audience_problems`, `scripts`, `script_versions`, `behavior_events` and `scheduled_syncs`, with
-foreign keys, indexes, timestamps and row-level security enabled.
+`audience_problems`, `scripts`, `script_versions`, `behavior_events`, `scheduled_syncs` and
+`api_integrations`, with foreign keys, indexes, timestamps and row-level security enabled.
 
 There is one workspace row in `users`, created automatically on first load, and every other table is
 scoped to it. Keeping that scoping means the schema is ready if accounts are ever added back, and it
@@ -172,11 +216,12 @@ default.
 
 ### AI provider
 
-Either works; the studio picks OpenAI by default and falls back to whichever key is present.
+Either works; the studio picks OpenAI by default and falls back to whichever key is present. Add the
+key in **Settings → API keys**, or set it in the environment.
 
-- **OpenAI** — set `OPENAI_API_KEY`. `OPENAI_BASE_URL` lets you point at any OpenAI-compatible
-  endpoint (Azure, a local model server, an internal gateway).
-- **Anthropic** — set `ANTHROPIC_API_KEY` and `AI_PROVIDER=anthropic`.
+- **OpenAI** — `OPENAI_API_KEY`. `OPENAI_BASE_URL` points at any OpenAI-compatible endpoint (Azure, a
+  local model server, an internal gateway).
+- **Anthropic** — `ANTHROPIC_API_KEY`, and `AI_PROVIDER=anthropic` to prefer it when both are set.
 
 Without a key: research still searches and stores sources, but facts are not extracted, and hooks and
 scripts come from the labelled demo generator. AI editing and fact checking return a clear
@@ -184,7 +229,7 @@ scripts come from the labelled demo generator. AI editing and fact checking retu
 
 ### Search provider
 
-Set `SEARCH_API_KEY` and optionally `SEARCH_PROVIDER`:
+Add the key in Settings, or set `SEARCH_API_KEY` and optionally `SEARCH_PROVIDER`:
 
 | Provider | Value | Where to get a key |
 | --- | --- | --- |
@@ -200,18 +245,20 @@ message — it never reports an empty-but-successful search.
 ### Reddit
 
 1. Create an app at <https://www.reddit.com/prefs/apps> (type: **script**).
-2. Set `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` and a descriptive `REDDIT_USER_AGENT`.
+2. Enter the client ID, client secret and a descriptive user agent in Settings, or set
+   `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` and `REDDIT_USER_AGENT`.
 
 Uses the official OAuth application-only grant and reads public listings only.
 
 ### YouTube
 
-Enable **YouTube Data API v3** in Google Cloud and set `YOUTUBE_API_KEY`. Public video search only.
+Enable **YouTube Data API v3** in Google Cloud, then add the key in Settings or set `YOUTUBE_API_KEY`.
+Public video search only.
 
 ### Facebook / Instagram
 
-Set `FACEBOOK_ACCESS_TOKEN` / `INSTAGRAM_ACCESS_TOKEN` from a Meta app with the appropriate Page or
-Business permissions.
+Add the token in Settings, or set `FACEBOOK_ACCESS_TOKEN` / `INSTAGRAM_ACCESS_TOKEN`, from a Meta app
+with the appropriate Page or Business permissions.
 
 **Be aware of what this can and cannot do.** Meta does not offer platform-wide public keyword search.
 A Graph API token grants access to content you own or manage, so this provider reads the posts and
@@ -232,8 +279,9 @@ timer) with an authenticated session — the app does not run its own background
 The studio has no authentication — see [Access and exposure](#access-and-exposure) for what that
 means and what to put in front of it. Everything below is what the app itself still does:
 
-- **No API keys in the browser.** Every key is read in server-only modules. `/api/status` reports
-  whether a key is present, never its value.
+- **No API keys in the browser.** Keys are read in server-only modules, stored AES-256-GCM encrypted,
+  and never sent back to the client — Settings shows a four-character preview and nothing more.
+  `/api/status` reports whether a key is present, never its value.
 - **Zod validation** on every request body.
 - **SQL injection is structurally prevented**: the Postgres driver validates every identifier against
   a column whitelist and binds every value as a parameter.
@@ -267,6 +315,7 @@ src/
 │   ├── social/             # SocialProvider interface + Reddit, YouTube, Meta
 │   ├── research/           # Query planning, classification, fact extraction, problem discovery, demo data
 │   ├── scripts/            # Prompts, duration engine, hooks, generation, editing, fact checking
+│   ├── credentials/        # Registry, AES-256-GCM crypto, encrypted credential store
 │   ├── db/                 # Store interface + JSON and Postgres drivers, column whitelist
 │   ├── learning/           # Rule-based preference tracking
 │   └── types.ts  validation.ts  data.ts  api.ts  env.ts  user.ts
@@ -306,6 +355,8 @@ No route requires a session — they are all open. Errors return `{ error, code 
 | `GET` | `/api/scripts/[id]/versions` | Version list |
 | `POST` | `/api/scripts/[id]/versions/[versionId]/restore` | Restore, keeping history |
 | `GET` | `/api/scripts/[id]/export?format=txt\|json` | Export |
+| `GET PUT DELETE` | `/api/settings/integrations` | Read masked state / save keys / remove keys |
+| `POST` | `/api/settings/integrations/[id]/test` | Verify a credential with a real provider call |
 | `GET PATCH` | `/api/settings/preferences` | Studio defaults |
 | `GET DELETE` | `/api/settings/learning` | Insights / delete learning history |
 | `GET` | `/api/status` | Integration status (never key values) |
@@ -340,6 +391,7 @@ front of it. Do not expose the port directly.
 ### Checklist before the team uses it
 
 - [ ] Access control is in place in front of the app, or it is only reachable from localhost
+- [ ] `CREDENTIALS_SECRET` is set, so keys stored via Settings survive a redeploy
 - [ ] `DATABASE_URL` points at Postgres, and the migration has been applied
 - [ ] HTTPS is terminated in front of the app
 - [ ] `.env.local` is not committed (it is git-ignored)
@@ -378,6 +430,9 @@ Stated plainly rather than papered over:
 - **No authentication and no multi-user separation.** One shared workspace, open to anyone who can
   reach it. Rows are still scoped to a workspace id, so accounts could be layered back on without a
   data migration.
+- **Stored keys are only as private as the deployment.** They are encrypted at rest and never
+  returned to the browser, but the running app can decrypt them, and it has no sign-in — so the
+  access boundary in front of it is what protects them.
 - **Fact checking is an assistant, not an approver.** It checks the script against the attached
   sources only. A human still reads anything about fees, deadlines or visa rules before it ships.
 

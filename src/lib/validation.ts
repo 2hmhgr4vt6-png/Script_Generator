@@ -109,3 +109,20 @@ export const preferencesSchema = z.object({
 export const problemUpdateSchema = z.object({
   status: z.enum(['new', 'saved', 'script-created', 'dismissed']).optional(),
 })
+
+export const integrationProviderSchema = z.enum([
+  'openai', 'anthropic', 'search', 'reddit', 'youtube', 'facebook', 'instagram',
+])
+
+export const integrationSaveSchema = z.object({
+  provider: integrationProviderSchema,
+  /**
+   * Field name -> value. Unknown field names are ignored by the store rather
+   * than rejected, so a stale client cannot write arbitrary keys.
+   */
+  fields: z.record(z.string().max(4000)),
+})
+
+export const integrationDeleteSchema = z.object({
+  provider: integrationProviderSchema,
+})

@@ -2,14 +2,14 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { Topbar } from '@/components/layout/topbar'
 import { currentWorkspace } from '@/lib/user'
 import { getPreferences } from '@/lib/data'
-import { isDemoMode } from '@/lib/env'
+import { isDemoMode } from '@/lib/credentials'
 
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await currentWorkspace()
   const prefs = await getPreferences(user.id)
-  const demoMode = isDemoMode()
+  const demoMode = await isDemoMode()
 
   return (
     <div className="flex min-h-screen">

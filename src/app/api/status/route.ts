@@ -2,7 +2,7 @@ import { apiHandler } from '@/lib/api'
 import { aiStatus } from '@/lib/ai'
 import { currentWorkspace } from '@/lib/user'
 import { getStore } from '@/lib/db'
-import { isDemoMode } from '@/lib/env'
+import { isDemoMode } from '@/lib/credentials'
 import { searchStatus } from '@/lib/search'
 import { socialStatuses } from '@/lib/social'
 import type { ScheduledSync } from '@/lib/types'
@@ -21,11 +21,11 @@ export async function GET() {
     })
 
     return {
-      demoMode: isDemoMode(),
+      demoMode: await isDemoMode(),
       database: store.driver,
-      ai: aiStatus(),
-      search: searchStatus(),
-      social: socialStatuses(),
+      ai: await aiStatus(),
+      search: await searchStatus(),
+      social: await socialStatuses(),
       lastSync: syncs[0] ?? null,
     }
   })

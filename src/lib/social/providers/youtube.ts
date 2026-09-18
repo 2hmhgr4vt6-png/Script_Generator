@@ -1,5 +1,4 @@
 import 'server-only'
-import { env } from '@/lib/env'
 import { SocialProviderError, type SocialPost, type SocialProvider, type SocialStatus } from '../types'
 
 /** Public video search through the official YouTube Data API v3. */
@@ -7,8 +6,10 @@ export class YouTubeProvider implements SocialProvider {
   readonly id = 'youtube'
   readonly label = 'YouTube'
 
+  constructor(private apiKey: string | undefined) {}
+
   status(): SocialStatus {
-    const connected = Boolean(env.youtubeApiKey)
+    const connected = Boolean(this.apiKey)
     return {
       id: this.id,
       label: this.label,
@@ -21,11 +22,15 @@ export class YouTubeProvider implements SocialProvider {
     }
   }
 
+  async verify(): Promise<void> {
+    await this.discover('germany student visa', { limit: 1 })
+  }
+
   async discover(query: string, options: { limit?: number } = {}): Promise<SocialPost[]> {
-    if (!env.youtubeApiKey) throw new SocialProviderError('YouTube is not connected.', 'not-connected')
+    if (!this.apiKey) throw new SocialProviderError('YouTube is not connected.', 'not-connected')
 
     const url = new URL('https://www.googleapis.com/youtube/v3/search')
-    url.searchParams.set('key', env.youtubeApiKey)
+    url.searchParams.set('key', this.apiKey)
     url.searchParams.set('q', query)
     url.searchParams.set('part', 'snippet')
     url.searchParams.set('type', 'video')
@@ -33,7 +38,10 @@ export class YouTubeProvider implements SocialProvider {
 
     const response = await fetch(url)
     if (response.status === 403) {
-      throw new SocialProviderError('YouTube rejected the API key or the quota is exhausted.', 'invalid-key')
+      throw new SocialProviderError('YouTube rejected the API key, or the daily quota is exhausted.', 'invalid-key')
+    }
+    if (response.status === 400) {
+      throw new SocialProviderError('YouTube rejected the request — check that the key is a Data API v3 key.', 'invalid-key')
     }
     if (!response.ok) throw new SocialProviderError(`YouTube search failed (${response.status}).`)
 

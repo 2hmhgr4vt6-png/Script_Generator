@@ -36,7 +36,7 @@ export interface RefineSectionInput {
 }
 
 export async function refineSection(input: RefineSectionInput): Promise<string> {
-  const ai = requireAI()
+  const ai = await requireAI()
   const language = input.script.language
 
   const result = await ai.complete(
@@ -83,7 +83,7 @@ export interface RefineScriptInput {
 }
 
 export async function refineScript(input: RefineScriptInput): Promise<{ sections: ScriptSection[]; language: Language; durationSeconds: number }> {
-  const ai = requireAI()
+  const ai = await requireAI()
   const language = input.targetLanguage ?? input.script.language
   const seconds =
     input.targetSeconds ??
@@ -127,7 +127,7 @@ Respond as JSON: {"hook": "...", "problem": "...", "solution": "...", "cta": "..
 }
 
 export async function factCheckScript(script: Script): Promise<ClaimCheck[]> {
-  const ai = requireAI()
+  const ai = await requireAI()
   const raw = await ai.complete(
     [
       {
@@ -162,8 +162,8 @@ Respond as JSON:
   }))
 }
 
-function requireAI() {
-  const ai = getAIProvider()
+async function requireAI() {
+  const ai = await getAIProvider()
   if (!ai) {
     throw new AppError(
       'AI editing needs a provider. Add OPENAI_API_KEY or ANTHROPIC_API_KEY in Settings to enable rewriting and fact checking.',

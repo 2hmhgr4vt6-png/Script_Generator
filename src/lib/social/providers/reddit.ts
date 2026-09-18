@@ -1,5 +1,4 @@
 import 'server-only'
-import { env } from '@/lib/env'
 import { SocialProviderError, type SocialPost, type SocialProvider, type SocialStatus } from '../types'
 
 interface TokenCache {
@@ -7,7 +6,10 @@ interface TokenCache {
   expiresAt: number
 }
 
-let cache: TokenCache | null = null
+/** Tokens are cached per client id, so rotating a credential invalidates its token. */
+const tokenCache = new Map<string, TokenCache>()
+
+const DEFAULT_USER_AGENT = 'bhasika-content-studio/1.0'
 
 /**
  * Reddit via the official OAuth API (application-only "client credentials"
@@ -17,8 +19,14 @@ export class RedditProvider implements SocialProvider {
   readonly id = 'reddit'
   readonly label = 'Reddit'
 
+  constructor(
+    private clientId: string | undefined,
+    private clientSecret: string | undefined,
+    private userAgent: string = DEFAULT_USER_AGENT,
+  ) {}
+
   status(): SocialStatus {
-    const connected = Boolean(env.redditClientId && env.redditClientSecret)
+    const connected = Boolean(this.clientId && this.clientSecret)
     return {
       id: this.id,
       label: this.label,
@@ -32,23 +40,41 @@ export class RedditProvider implements SocialProvider {
   }
 
   private async token(): Promise<string> {
-    if (cache && cache.expiresAt > Date.now() + 30_000) return cache.token
-    const credentials = Buffer.from(`${env.redditClientId}:${env.redditClientSecret}`).toString('base64')
+    const cached = tokenCache.get(this.clientId!)
+    if (cached && cached.expiresAt > Date.now() + 30_000) return cached.token
+
+    const credentials = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64')
     const response = await fetch('https://www.reddit.com/api/v1/access_token', {
       method: 'POST',
       headers: {
         Authorization: `Basic ${credentials}`,
         'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': env.redditUserAgent,
+        'User-Agent': this.userAgent,
       },
       body: 'grant_type=client_credentials',
     })
-    if (response.status === 401) throw new SocialProviderError('Reddit rejected the API credentials.', 'invalid-key')
+    // Reddit answers bad client credentials with 401 or 403 depending on the endpoint.
+    if (response.status === 401 || response.status === 403) {
+      throw new SocialProviderError(
+        'Reddit rejected the client ID or secret. Check that the app type is "script" and the values are not swapped.',
+        'invalid-key',
+      )
+    }
     if (!response.ok) throw new SocialProviderError(`Reddit authentication failed (${response.status}).`)
+
     const json = (await response.json()) as { access_token?: string; expires_in?: number }
     if (!json.access_token) throw new SocialProviderError('Reddit did not return an access token.')
-    cache = { token: json.access_token, expiresAt: Date.now() + (json.expires_in ?? 3600) * 1000 }
-    return cache.token
+    tokenCache.set(this.clientId!, {
+      token: json.access_token,
+      expiresAt: Date.now() + (json.expires_in ?? 3600) * 1000,
+    })
+    return json.access_token
+  }
+
+  /** Authenticates without searching — used by the "Test" button in Settings. */
+  async verify(): Promise<void> {
+    if (!this.status().connected) throw new SocialProviderError('Reddit is not connected.', 'not-connected')
+    await this.token()
   }
 
   async discover(query: string, options: { limit?: number } = {}): Promise<SocialPost[]> {
@@ -64,7 +90,7 @@ export class RedditProvider implements SocialProvider {
     url.searchParams.set('type', 'link')
 
     const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}`, 'User-Agent': env.redditUserAgent },
+      headers: { Authorization: `Bearer ${token}`, 'User-Agent': this.userAgent },
     })
     if (response.status === 429) throw new SocialProviderError('Reddit rate limit reached.', 'rate-limited')
     if (!response.ok) throw new SocialProviderError(`Reddit search failed (${response.status}).`)

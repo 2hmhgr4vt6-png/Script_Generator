@@ -19,7 +19,7 @@ export interface HookOutcome {
 
 export async function generateHooks(input: HookInput): Promise<HookOutcome> {
   const language = input.idea.language ?? 'ne'
-  const ai = getAIProvider()
+  const ai = await getAIProvider()
 
   if (!ai) {
     return { hooks: demoHooks(language, `${input.idea.raw_text ?? ''} ${input.problem?.title ?? ''}`), isDemo: true }

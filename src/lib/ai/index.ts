@@ -1,32 +1,46 @@
 import 'server-only'
-import { env } from '@/lib/env'
+import { workspaceCredentials, type ResolvedCredentials } from '@/lib/credentials'
 import { AnthropicProvider } from './providers/anthropic'
 import { OpenAIProvider } from './providers/openai'
 import type { AIProvider } from './types'
 
 export * from './types'
 
-/**
- * Resolves the configured LLM. Returns null when no key is present — callers
- * then fall back to clearly-labelled demo generation rather than inventing
- * content that looks live.
- */
-export function getAIProvider(): AIProvider | null {
-  const preferred = env.aiProvider?.toLowerCase()
+const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
+const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1'
+const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-5'
 
-  if (preferred === 'anthropic' || (!preferred && !env.openaiApiKey && env.anthropicApiKey)) {
-    if (!env.anthropicApiKey) return null
-    return new AnthropicProvider(env.anthropicApiKey, env.anthropicModel)
+/**
+ * Builds the configured LLM from resolved credentials (Settings first, then
+ * environment). Returns null when no key is available — callers then fall back
+ * to clearly-labelled demo generation rather than inventing live-looking output.
+ */
+export function buildAIProvider(credentials: ResolvedCredentials): AIProvider | null {
+  const preferred = credentials.get('AI_PROVIDER')?.toLowerCase()
+  const openaiKey = credentials.get('OPENAI_API_KEY')
+  const anthropicKey = credentials.get('ANTHROPIC_API_KEY')
+
+  if (preferred === 'anthropic' || (!preferred && !openaiKey && anthropicKey)) {
+    if (!anthropicKey) return null
+    return new AnthropicProvider(anthropicKey, credentials.get('ANTHROPIC_MODEL') ?? DEFAULT_ANTHROPIC_MODEL)
   }
   if (preferred === 'openai' || !preferred) {
-    if (!env.openaiApiKey) return null
-    return new OpenAIProvider(env.openaiApiKey, env.openaiModel, env.openaiBaseUrl)
+    if (!openaiKey) return null
+    return new OpenAIProvider(
+      openaiKey,
+      credentials.get('OPENAI_MODEL') ?? DEFAULT_OPENAI_MODEL,
+      credentials.get('OPENAI_BASE_URL') ?? DEFAULT_OPENAI_BASE_URL,
+    )
   }
   return null
 }
 
-export function aiStatus(): { connected: boolean; provider: string | null; model: string | null } {
-  const provider = getAIProvider()
+export async function getAIProvider(): Promise<AIProvider | null> {
+  return buildAIProvider(await workspaceCredentials())
+}
+
+export async function aiStatus(): Promise<{ connected: boolean; provider: string | null; model: string | null }> {
+  const provider = await getAIProvider()
   return {
     connected: Boolean(provider),
     provider: provider?.name ?? null,

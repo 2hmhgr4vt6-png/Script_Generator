@@ -15,20 +15,24 @@ export default async function ProblemsPage({
   searchParams: { category?: string; platform?: string; status?: string; language?: string; q?: string }
 }) {
   const user = await currentWorkspace()
-  const problems = await listProblems(user.id, {
-    category: searchParams.category as never,
-    platform: searchParams.platform,
-    status: searchParams.status as never,
-    language: searchParams.language as never,
-    q: searchParams.q,
-  })
+  const [problems, sources, search] = await Promise.all([
+    listProblems(user.id, {
+      category: searchParams.category as never,
+      platform: searchParams.platform,
+      status: searchParams.status as never,
+      language: searchParams.language as never,
+      q: searchParams.q,
+    }),
+    socialStatuses(),
+    searchStatus(),
+  ])
 
   return (
     <Suspense>
       <ProblemBoard
         initialProblems={problems}
-        sources={socialStatuses()}
-        webSearchConnected={searchStatus().connected}
+        sources={sources}
+        webSearchConnected={search.connected}
       />
     </Suspense>
   )

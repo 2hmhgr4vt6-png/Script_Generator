@@ -28,7 +28,7 @@ export interface DiscoverInput {
 export interface DiscoverOutcome {
   problems: AudienceProblem[]
   isDemo: boolean
-  sourceStatuses: ReturnType<typeof socialStatuses>
+  sourceStatuses: Awaited<ReturnType<typeof socialStatuses>>
   notes: string[]
 }
 
@@ -38,11 +38,12 @@ export interface DiscoverOutcome {
  */
 export async function discoverProblems(input: DiscoverInput): Promise<DiscoverOutcome> {
   const store = await getStore()
-  const statuses = socialStatuses()
-  const providers = connectedSocialProviders().filter(
-    (p) => !input.sources?.length || input.sources.includes(p.id),
-  )
-  const search = getSearchProvider()
+  const [statuses, connected, search] = await Promise.all([
+    socialStatuses(),
+    connectedSocialProviders(),
+    getSearchProvider(),
+  ])
+  const providers = connected.filter((p) => !input.sources?.length || input.sources.includes(p.id))
   const notes: string[] = []
 
   const queries = input.keyword ? [input.keyword] : DEFAULT_QUERIES
@@ -158,7 +159,7 @@ export async function analyseProblem(problem: AudienceProblem): Promise<{
   relatedQuestions: string[]
   isDemo: boolean
 }> {
-  const ai = getAIProvider()
+  const ai = await getAIProvider()
   if (!ai) {
     return {
       analysis: problem.analysis ?? {

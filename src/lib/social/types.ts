@@ -25,6 +25,8 @@ export interface SocialProvider {
   status(): SocialStatus
   /** Only called when status().connected is true. */
   discover(query: string, options?: { limit?: number }): Promise<SocialPost[]>
+  /** Cheapest possible live call, used by the "Test" button in Settings. */
+  verify(): Promise<void>
 }
 
 export class SocialProviderError extends Error {

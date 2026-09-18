@@ -1,6 +1,6 @@
 'use client'
 
-import { Database, Plug, Shield, Sparkles, Trash2 } from 'lucide-react'
+import { Database, Shield, Sparkles, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/ui/dialog'
 import { Field, Input, Select } from '@/components/ui/input'
 import { useToast } from '@/components/ui/toast'
-import type { SocialStatus } from '@/lib/social/types'
+import { IntegrationsPanel } from '@/components/settings/integrations-panel'
+import type { IntegrationState } from '@/lib/credentials/registry'
 import type { Insights } from '@/lib/learning'
 import { DURATIONS, LANGUAGES, PLATFORMS, TONES, type UserPreferences } from '@/lib/types'
 import { apiFetch } from '@/lib/utils'
@@ -18,9 +19,8 @@ import { apiFetch } from '@/lib/utils'
 interface Integrations {
   demoMode: boolean
   database: string
-  ai: { connected: boolean; provider: string | null; model: string | null }
-  search: { connected: boolean; provider: string | null }
-  social: SocialStatus[]
+  generatedKey: boolean
+  states: IntegrationState[]
 }
 
 export function SettingsWorkspace({
@@ -82,61 +82,11 @@ export function SettingsWorkspace({
       </header>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plug className="h-3.5 w-3.5 text-accent" /> Integrations
-            </CardTitle>
-            {integrations.demoMode ? <Badge variant="warning">Demo mode</Badge> : <Badge variant="success">Live</Badge>}
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <IntegrationRow
-              label="AI provider"
-              connected={integrations.ai.connected}
-              detail={
-                integrations.ai.connected
-                  ? `${integrations.ai.provider} · ${integrations.ai.model}`
-                  : 'Not connected — add OPENAI_API_KEY or ANTHROPIC_API_KEY to enable research extraction, hooks, generation and fact checking.'
-              }
-              envVars={['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'AI_PROVIDER']}
-            />
-            <IntegrationRow
-              label="Search provider"
-              connected={integrations.search.connected}
-              detail={
-                integrations.search.connected
-                  ? `${integrations.search.provider} connected`
-                  : 'Not connected — add SEARCH_API_KEY (Tavily, Serper or Exa) to research the live internet.'
-              }
-              envVars={['SEARCH_PROVIDER', 'SEARCH_API_KEY']}
-            />
-            {integrations.social.map((source) => (
-              <IntegrationRow
-                key={source.id}
-                label={source.label}
-                connected={source.connected}
-                detail={source.message}
-                envVars={source.requiredEnv}
-                docsUrl={source.docsUrl}
-              />
-            ))}
-            <IntegrationRow
-              label="Database"
-              connected
-              detail={
-                integrations.database === 'postgres'
-                  ? 'Postgres / Supabase connected.'
-                  : 'Local JSON store (development). Set DATABASE_URL to use Postgres or Supabase.'
-              }
-              envVars={['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']}
-            />
-            <p className="border-t border-line pt-3 text-[11px] leading-relaxed text-faint">
-              API keys are read from server environment variables only. They are never sent to the browser and are never
-              stored in the database. Add them to <code className="text-muted">.env.local</code> (or your hosting
-              provider&apos;s environment settings) and restart the app.
-            </p>
-          </CardContent>
-        </Card>
+        <IntegrationsPanel
+          initialStates={integrations.states}
+          generatedKey={integrations.generatedKey}
+          databaseDriver={integrations.database}
+        />
 
         <div className="space-y-5">
           <Card>
@@ -292,45 +242,6 @@ export function SettingsWorkspace({
         destructive
         loading={clearing}
       />
-    </div>
-  )
-}
-
-function IntegrationRow({
-  label,
-  connected,
-  detail,
-  envVars,
-  docsUrl,
-}: {
-  label: string
-  connected: boolean
-  detail: string
-  envVars: string[]
-  docsUrl?: string
-}) {
-  return (
-    <div className="rounded-lg border border-line bg-surface px-3 py-2.5">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-success' : 'bg-faint'}`} aria-hidden />
-          <p className="text-xs font-medium text-ink">{label}</p>
-        </div>
-        <Badge variant={connected ? 'success' : 'outline'}>{connected ? 'Connected' : 'Not connected'}</Badge>
-      </div>
-      <p className="mt-1.5 text-[11px] leading-relaxed text-muted">{detail}</p>
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {envVars.map((name) => (
-          <code key={name} className="rounded border border-line bg-card px-1.5 py-0.5 text-[10px] text-faint">
-            {name}
-          </code>
-        ))}
-        {docsUrl ? (
-          <a href={docsUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-accent hover:underline">
-            Docs
-          </a>
-        ) : null}
-      </div>
     </div>
   )
 }

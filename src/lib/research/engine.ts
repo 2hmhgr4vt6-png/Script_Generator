@@ -33,8 +33,7 @@ export interface ResearchOutcome {
  */
 export async function runResearch(input: RunResearchInput): Promise<ResearchOutcome> {
   const store = await getStore()
-  const ai = getAIProvider()
-  const search = getSearchProvider()
+  const [ai, search] = await Promise.all([getAIProvider(), getSearchProvider()])
   const sessionId = newId()
   const timestamp = now()
 
@@ -152,7 +151,7 @@ export async function runResearch(input: RunResearchInput): Promise<ResearchOutc
 }
 
 async function planQueries(text: string): Promise<string[]> {
-  const ai = getAIProvider()
+  const ai = await getAIProvider()
   if (ai) {
     try {
       const raw = await ai.complete(
@@ -183,7 +182,7 @@ Respond as JSON: {"queries": ["...", "..."]}`,
 
 async function gatherResults(
   queries: string[],
-  search: NonNullable<ReturnType<typeof getSearchProvider>>,
+  search: NonNullable<Awaited<ReturnType<typeof getSearchProvider>>>,
   includeCommunity: boolean,
 ): Promise<{ results: SearchResult[]; errors: Error[] }> {
   const batches = await Promise.allSettled([
@@ -218,7 +217,7 @@ interface Extraction {
 }
 
 async function extractFacts(
-  ai: NonNullable<ReturnType<typeof getAIProvider>>,
+  ai: NonNullable<Awaited<ReturnType<typeof getAIProvider>>>,
   idea: string,
   sources: ResearchSource[],
 ): Promise<Extraction> {
