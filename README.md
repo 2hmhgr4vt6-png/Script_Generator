@@ -197,9 +197,20 @@ provider contributes its configured model plus known-good alternatives. So a mod
 overloaded, retired or simply mistyped does not take the provider down with it, and a provider that
 is rate-limited hands over to the next one.
 
-The order tried is: your chosen model → that provider's other models → the next provider. A
-transient "high demand" error is retried once before moving on. If everything is exhausted, the
-error names one reason per provider rather than one per attempt.
+The order tried is: your chosen model → that provider's other models → **the models the provider
+says it actually serves** → the next provider. A transient "high demand" error is retried once
+before moving on.
+
+That third step matters: model names differ by account and region and change often, so any list
+hardcoded here will eventually be wrong. When a model is rejected as unknown, the studio asks the
+provider's own `/models` endpoint and retries with something real from that list.
+
+The same list is available in Settings — open a provider's credentials and choose **Load models my
+key serves** to pick from what your account actually has, rather than from names guessed at build
+time.
+
+If everything is exhausted, the error names one reason per provider, with every individual attempt
+available behind **Show every attempt**.
 
 > Free tiers and model names change. Every figure above was checked in September 2026 — if something
 > looks different, trust the provider's own pricing page over this file.

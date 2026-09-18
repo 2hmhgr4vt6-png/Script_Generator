@@ -54,7 +54,11 @@ export function apiHandler<T>(handler: () => Promise<T>): Promise<NextResponse> 
       console.error('[bhasika:api]', name, message, (error as Error)?.stack)
 
       if (USER_FACING_ERRORS.has(name)) {
-        return NextResponse.json({ error: message, code: 'provider_error' }, { status: 502 })
+        const details = (error as { details?: string[] }).details
+        return NextResponse.json(
+          { error: message, code: 'provider_error', ...(details?.length ? { details } : {}) },
+          { status: 502 },
+        )
       }
       return NextResponse.json(
         { error: `Something went wrong: ${message}`, code: 'server_error' },

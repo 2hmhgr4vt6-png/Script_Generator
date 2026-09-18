@@ -31,6 +31,8 @@ export class AIProviderError extends Error {
       | 'json-mode-unsupported'
       | 'model-not-found'
       | 'transient' = 'upstream',
+    /** Per-attempt detail, shown to the user on request. */
+    readonly details: string[] = [],
   ) {
     super(message)
     this.name = 'AIProviderError'

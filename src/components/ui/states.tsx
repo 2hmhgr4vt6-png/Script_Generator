@@ -27,7 +27,18 @@ export function EmptyState({
   )
 }
 
-export function ErrorState({ title = 'Something went wrong', message, action }: { title?: string; message: string; action?: ReactNode }) {
+export function ErrorState({
+  title = 'Something went wrong',
+  message,
+  action,
+  details,
+}: {
+  title?: string
+  message: string
+  action?: ReactNode
+  /** Per-attempt diagnostics, hidden behind a disclosure so the summary stays readable. */
+  details?: string[]
+}) {
   return (
     <div className="rounded-xl border border-danger/30 bg-danger/5 p-4">
       <div className="flex items-start gap-3">
@@ -35,6 +46,20 @@ export function ErrorState({ title = 'Something went wrong', message, action }: 
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-ink">{title}</p>
           <p className="mt-1 text-xs leading-relaxed text-muted">{message}</p>
+          {details?.length ? (
+            <details className="mt-2.5">
+              <summary className="cursor-pointer text-[11px] text-faint transition-colors hover:text-muted">
+                Show every attempt ({details.length})
+              </summary>
+              <ul className="mt-2 space-y-1.5 border-l border-line pl-3">
+                {details.map((detail, index) => (
+                  <li key={index} className="break-words text-[11px] leading-relaxed text-muted">
+                    {detail}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
           {action ? <div className="mt-3">{action}</div> : null}
         </div>
       </div>

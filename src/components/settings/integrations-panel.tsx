@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, CheckCircle2, ExternalLink, KeyRound, Plug, Trash2, Zap } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ExternalLink, KeyRound, Plug, RefreshCw, Trash2, Zap } from 'lucide-react'
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -340,6 +340,7 @@ export function IntegrationsPanel({
                   {field.options ? (
                     <ModelPicker
                       field={field}
+                      providerId={editing.id}
                       value={draft[field.key] ?? ''}
                       onChange={(value) => setDraft((d) => ({ ...d, [field.key]: value }))}
                     />
@@ -396,12 +397,34 @@ function ModelPicker({
   field,
   value,
   onChange,
+  providerId,
 }: {
   field: IntegrationField
   value: string
   onChange: (value: string) => void
+  providerId: string
 }) {
-  const options = field.options ?? []
+  const [live, setLive] = useState<string[] | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  const options = live
+    ? live.map((id) => ({ value: id, label: id }))
+    : field.options ?? []
+
+  async function loadModels() {
+    setLoading(true)
+    setLoadError(null)
+    try {
+      const result = await apiFetch<{ models: string[] }>(`/api/settings/integrations/${providerId}/models`)
+      if (!result.models.length) setLoadError('The provider returned an empty list.')
+      else setLive(result.models)
+    } catch (error) {
+      setLoadError((error as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
   const known = options.some((option) => option.value === value)
   const [custom, setCustom] = useState(Boolean(value) && !known)
 
@@ -448,6 +471,14 @@ function ModelPicker({
           spellCheck={false}
         />
       ) : null}
+
+      <div className="flex items-center gap-2">
+        <Button type="button" size="sm" variant="ghost" onClick={loadModels} loading={loading}>
+          <RefreshCw className="h-3 w-3" /> {live ? 'Reload models' : 'Load models my key serves'}
+        </Button>
+        {live ? <span className="text-[11px] text-success">{live.length} found</span> : null}
+      </div>
+      {loadError ? <p className="text-[11px] text-danger">{loadError}</p> : null}
     </div>
   )
 }

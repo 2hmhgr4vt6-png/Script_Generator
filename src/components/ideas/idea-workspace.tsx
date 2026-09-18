@@ -40,6 +40,7 @@ export function IdeaWorkspace({ recentIdeas, defaults }: Props) {
   })
   const [busy, setBusy] = useState<Busy>(null)
   const [error, setError] = useState<string | null>(null)
+  const [errorDetails, setErrorDetails] = useState<string[] | undefined>(undefined)
   const [status, setStatus] = useState<string | null>(null)
 
   function patch(next: Partial<IdeaFormValues>) {
@@ -82,6 +83,7 @@ export function IdeaWorkspace({ recentIdeas, defaults }: Props) {
       router.refresh()
     } catch (err) {
       setError((err as Error).message)
+      setErrorDetails((err as Error & { details?: string[] }).details)
     } finally {
       setBusy(null)
     }
@@ -107,6 +109,7 @@ export function IdeaWorkspace({ recentIdeas, defaults }: Props) {
       router.push(`/research/${result.session.id}`)
     } catch (err) {
       setError((err as Error).message)
+      setErrorDetails((err as Error & { details?: string[] }).details)
       setBusy(null)
       setStatus(null)
     }
@@ -120,6 +123,7 @@ export function IdeaWorkspace({ recentIdeas, defaults }: Props) {
       router.push(`/script/new?idea=${idea.id}`)
     } catch (err) {
       setError((err as Error).message)
+      setErrorDetails((err as Error & { details?: string[] }).details)
       setBusy(null)
     }
   }
@@ -154,7 +158,7 @@ export function IdeaWorkspace({ recentIdeas, defaults }: Props) {
 
               <IdeaFields values={values} onChange={patch} compact />
 
-              {error ? <ErrorState message={error} /> : null}
+              {error ? <ErrorState message={error} details={errorDetails} /> : null}
               {status ? (
                 <p className="rounded-lg border border-line bg-surface px-3 py-2 text-xs text-muted">{status}</p>
               ) : null}

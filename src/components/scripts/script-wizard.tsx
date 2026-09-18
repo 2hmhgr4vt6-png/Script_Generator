@@ -58,6 +58,7 @@ export function ScriptWizard({ idea, problem, session, sources, preselectedSourc
   const [selectedHook, setSelectedHook] = useState<HookOption | null>(null)
   const [loading, setLoading] = useState<'hooks' | 'script' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [errorDetails, setErrorDetails] = useState<string[] | undefined>(undefined)
 
   const targetWords = targetWordCount(values.duration_seconds, values.language)
 
@@ -99,6 +100,7 @@ export function ScriptWizard({ idea, problem, session, sources, preselectedSourc
       setStep(1)
     } catch (err) {
       setError((err as Error).message)
+      setErrorDetails((err as Error & { details?: string[] }).details)
     } finally {
       setLoading(null)
     }
@@ -126,6 +128,7 @@ export function ScriptWizard({ idea, problem, session, sources, preselectedSourc
       router.push(`/scripts/${result.script.id}`)
     } catch (err) {
       setError((err as Error).message)
+      setErrorDetails((err as Error & { details?: string[] }).details)
       setLoading(null)
       setStep(origin)
     }
@@ -158,7 +161,7 @@ export function ScriptWizard({ idea, problem, session, sources, preselectedSourc
         </ol>
       </header>
 
-      {error ? <ErrorState title="Could not generate" message={error} /> : null}
+      {error ? <ErrorState title="Could not generate" message={error} details={errorDetails} /> : null}
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">

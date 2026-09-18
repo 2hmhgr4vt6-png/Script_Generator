@@ -54,6 +54,37 @@ export class OpenAIProvider implements AIProvider {
     return DISPLAY_NAMES[this.name] ?? this.name
   }
 
+  /**
+   * Asks the provider which models this key actually serves.
+   *
+   * Hardcoded fallback model names age badly and differ per account and per
+   * region, so the real list beats any guess baked into this repository.
+   */
+  async listModels(): Promise<string[]> {
+    const response = await fetch(`${this.baseUrl}/models`, {
+      headers: { Authorization: `Bearer ${this.apiKey}` },
+    })
+    if (!response.ok) {
+      throw new AIProviderError(`${this.label()} would not list its models (HTTP ${response.status}).`)
+    }
+    const json = (await response.json()) as { data?: { id?: string }[]; models?: { name?: string }[] }
+    const ids = [
+      ...(json.data ?? []).map((entry) => entry.id),
+      // Ollama's native shape, in case /v1/models is proxied through.
+      ...(json.models ?? []).map((entry) => entry.name),
+    ].filter((id): id is string => Boolean(id))
+    return [...new Set(ids)]
+  }
+
+  /** A copy of this client pointed at a different model. */
+  withModel(model: string): OpenAIProvider {
+    return new OpenAIProvider(this.apiKey, model, this.baseUrl, {
+      name: this.name,
+      requestDefaults: this.requestDefaults,
+      minMaxTokens: this.minMaxTokens,
+    })
+  }
+
   async complete(messages: AIMessage[], options: CompletionOptions = {}): Promise<string> {
     try {
       return await this.withRetry(messages, options)

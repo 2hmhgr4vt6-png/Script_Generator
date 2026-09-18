@@ -71,7 +71,11 @@ export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const apiMessage = parsed ? (data as { error?: string }).error : undefined
-    if (apiMessage) throw new Error(apiMessage)
+    if (apiMessage) {
+      const failure = new Error(apiMessage) as Error & { details?: string[] }
+      failure.details = parsed ? (data as { details?: string[] }).details : undefined
+      throw failure
+    }
 
     const snippet = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200)
     if (response.status === 504 || response.status === 408) {
