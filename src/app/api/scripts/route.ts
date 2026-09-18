@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { apiHandler } from '@/lib/api'
-import { requireApiUser } from '@/lib/auth/guard'
+import { currentWorkspace } from '@/lib/user'
 import { getProblem, listScripts } from '@/lib/data'
 import { getStore, newId, now } from '@/lib/db'
 import { recordEvent } from '@/lib/learning'
@@ -14,7 +14,7 @@ export const maxDuration = 120
 
 export async function GET(request: NextRequest) {
   return apiHandler(async () => {
-    const user = await requireApiUser()
+    const user = await currentWorkspace()
     const params = request.nextUrl.searchParams
     return {
       scripts: await listScripts(user.id, {
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   return apiHandler(async () => {
-    const user = await requireApiUser()
+    const user = await currentWorkspace()
     const body = generateSchema.parse(await request.json())
     const store = await getStore()
 

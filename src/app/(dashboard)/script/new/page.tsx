@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { ScriptWizard } from '@/components/scripts/script-wizard'
-import { requirePageUser } from '@/lib/auth/guard'
+import { currentWorkspace } from '@/lib/user'
 import { getIdea, getPreferences, getProblem, getResearchSession } from '@/lib/data'
 
 export const metadata: Metadata = { title: 'Script Studio' }
@@ -12,7 +12,7 @@ export default async function NewScriptPage({
 }: {
   searchParams: { idea?: string; problem?: string; session?: string; sources?: string; angle?: string }
 }) {
-  const user = await requirePageUser()
+  const user = await currentWorkspace()
   const [prefs, idea, problem, research] = await Promise.all([
     getPreferences(user.id),
     searchParams.idea ? getIdea(user.id, searchParams.idea) : null,

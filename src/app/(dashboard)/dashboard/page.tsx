@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DemoBadge, EmptyState } from '@/components/ui/states'
-import { requirePageUser } from '@/lib/auth/guard'
+import { currentWorkspace } from '@/lib/user'
 import { getDashboardData } from '@/lib/data'
 import { getInsights } from '@/lib/learning'
 import { TOPIC_CATEGORIES } from '@/lib/types'
@@ -22,7 +22,7 @@ const SAMPLE_TOPICS = [
 ]
 
 export default async function DashboardPage() {
-  const user = await requirePageUser()
+  const user = await currentWorkspace()
   const [data, insights] = await Promise.all([getDashboardData(user.id), getInsights(user.id)])
 
   const stats = [

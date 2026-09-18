@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { ProblemBoard } from '@/components/problems/problem-board'
-import { requirePageUser } from '@/lib/auth/guard'
+import { currentWorkspace } from '@/lib/user'
 import { listProblems } from '@/lib/data'
 import { socialStatuses } from '@/lib/social'
 import { searchStatus } from '@/lib/search'
@@ -14,7 +14,7 @@ export default async function ProblemsPage({
 }: {
   searchParams: { category?: string; platform?: string; status?: string; language?: string; q?: string }
 }) {
-  const user = await requirePageUser()
+  const user = await currentWorkspace()
   const problems = await listProblems(user.id, {
     category: searchParams.category as never,
     platform: searchParams.platform,

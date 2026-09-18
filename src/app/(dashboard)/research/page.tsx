@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { DemoBadge, EmptyState } from '@/components/ui/states'
-import { requirePageUser } from '@/lib/auth/guard'
+import { currentWorkspace } from '@/lib/user'
 import { listResearchSessions } from '@/lib/data'
 import { formatRelative, truncate } from '@/lib/utils'
 
@@ -22,7 +22,7 @@ const STATUS_VARIANT = {
 } as const
 
 export default async function ResearchPage() {
-  const user = await requirePageUser()
+  const user = await currentWorkspace()
   const sessions = await listResearchSessions(user.id)
 
   return (

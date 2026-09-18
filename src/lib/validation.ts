@@ -15,11 +15,6 @@ export const categorySchema = z.enum([
 ])
 export const hookStyleSchema = z.enum(['situation', 'pain-point', 'curiosity', 'direct-question', 'myth-busting'])
 
-export const loginSchema = z.object({
-  email: z.string().min(1, 'Enter your email address.').email('Enter a valid email address.'),
-  password: z.string().min(1, 'Enter your password.'),
-})
-
 export const ideaSchema = z.object({
   raw_text: z.string().trim().min(10, 'Write at least a sentence about the idea.').max(5000, 'That idea is too long.'),
   category: categorySchema.default('other'),
@@ -110,17 +105,6 @@ export const preferencesSchema = z.object({
   research_schedule: z.enum(['off', 'daily', 'every-6-hours', 'custom']).optional(),
   research_schedule_cron: z.string().trim().max(120).optional().nullable(),
 })
-
-export const changePasswordSchema = z
-  .object({
-    current_password: z.string().min(1, 'Enter your current password.'),
-    new_password: z.string().min(10, 'Use at least 10 characters.'),
-    confirm_password: z.string().min(1, 'Confirm your new password.'),
-  })
-  .refine((data) => data.new_password === data.confirm_password, {
-    message: 'The new passwords do not match.',
-    path: ['confirm_password'],
-  })
 
 export const problemUpdateSchema = z.object({
   status: z.enum(['new', 'saved', 'script-created', 'dismissed']).optional(),

@@ -1,6 +1,6 @@
 'use client'
 
-import { Database, KeyRound, Plug, Shield, Sparkles, Trash2 } from 'lucide-react'
+import { Database, Plug, Shield, Sparkles, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/ui/dialog'
 import { Field, Input, Select } from '@/components/ui/input'
-import { ErrorState } from '@/components/ui/states'
 import { useToast } from '@/components/ui/toast'
 import type { SocialStatus } from '@/lib/social/types'
 import type { Insights } from '@/lib/learning'
@@ -25,12 +24,10 @@ interface Integrations {
 }
 
 export function SettingsWorkspace({
-  user,
   preferences,
   insights,
   integrations,
 }: {
-  user: { email: string; name: string | null }
   preferences: UserPreferences
   insights: Insights
   integrations: Integrations
@@ -40,9 +37,6 @@ export function SettingsWorkspace({
 
   const [prefs, setPrefs] = useState(preferences)
   const [savingPrefs, setSavingPrefs] = useState(false)
-  const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' })
-  const [changingPassword, setChangingPassword] = useState(false)
-  const [passwordError, setPasswordError] = useState<string | null>(null)
   const [clearing, setClearing] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
 
@@ -66,27 +60,6 @@ export function SettingsWorkspace({
     }
   }
 
-  async function changePassword(event: React.FormEvent) {
-    event.preventDefault()
-    setPasswordError(null)
-    setChangingPassword(true)
-    try {
-      await apiFetch('/api/auth/change-password', {
-        method: 'POST',
-        body: JSON.stringify({
-          current_password: passwords.current,
-          new_password: passwords.next,
-          confirm_password: passwords.confirm,
-        }),
-      })
-      toast.success('Password changed', 'Please sign in again with the new password.')
-      router.push('/login')
-    } catch (error) {
-      setPasswordError((error as Error).message)
-      setChangingPassword(false)
-    }
-  }
-
   async function clearLearning() {
     setClearing(true)
     try {
@@ -105,7 +78,7 @@ export function SettingsWorkspace({
     <div className="space-y-6">
       <header>
         <h1 className="text-xl font-semibold tracking-tight text-ink">Settings</h1>
-        <p className="mt-1.5 text-sm text-muted">Integrations, defaults, security and your data.</p>
+        <p className="mt-1.5 text-sm text-muted">Integrations, studio defaults and your data.</p>
       </header>
 
       <div className="grid gap-5 lg:grid-cols-2">
@@ -307,54 +280,6 @@ export function SettingsWorkspace({
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <KeyRound className="h-3.5 w-3.5 text-accent" /> Account & security
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4 text-xs text-muted">
-              Signed in as <span className="text-ink">{user.email}</span>
-            </p>
-            <form onSubmit={changePassword} className="space-y-4">
-              <Field label="Current password">
-                <Input
-                  type="password"
-                  autoComplete="current-password"
-                  value={passwords.current}
-                  onChange={(event) => setPasswords((p) => ({ ...p, current: event.target.value }))}
-                  required
-                />
-              </Field>
-              <Field label="New password" hint="At least 10 characters, with upper and lower case, a number and a symbol.">
-                <Input
-                  type="password"
-                  autoComplete="new-password"
-                  value={passwords.next}
-                  onChange={(event) => setPasswords((p) => ({ ...p, next: event.target.value }))}
-                  required
-                />
-              </Field>
-              <Field label="Confirm new password">
-                <Input
-                  type="password"
-                  autoComplete="new-password"
-                  value={passwords.confirm}
-                  onChange={(event) => setPasswords((p) => ({ ...p, confirm: event.target.value }))}
-                  required
-                />
-              </Field>
-              {passwordError ? <ErrorState message={passwordError} /> : null}
-              <Button type="submit" variant="primary" loading={changingPassword}>
-                Change password
-              </Button>
-              <p className="text-[11px] leading-relaxed text-faint">
-                Passwords are hashed with bcrypt before they are stored. Changing your password signs you out everywhere.
-              </p>
-            </form>
-          </CardContent>
-        </Card>
       </div>
 
       <ConfirmDialog

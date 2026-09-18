@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
-import { requirePageUser } from '@/lib/auth/guard'
+import { currentWorkspace } from '@/lib/user'
 import { getPreferences, listIdeas } from '@/lib/data'
 import { IdeaWorkspace } from '@/components/ideas/idea-workspace'
 
@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: 'New Idea' }
 export const dynamic = 'force-dynamic'
 
 export default async function IdeasPage() {
-  const user = await requirePageUser()
+  const user = await currentWorkspace()
   const [prefs, ideas] = await Promise.all([getPreferences(user.id), listIdeas(user.id, 12)])
 
   return (

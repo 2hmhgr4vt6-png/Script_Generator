@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { apiHandler } from '@/lib/api'
-import { requireApiUser } from '@/lib/auth/guard'
+import { currentWorkspace } from '@/lib/user'
 import { listIdeas } from '@/lib/data'
 import { getStore, newId, now } from '@/lib/db'
 import { recordEvent } from '@/lib/learning'
@@ -12,14 +12,14 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   return apiHandler(async () => {
-    const user = await requireApiUser()
+    const user = await currentWorkspace()
     return { ideas: await listIdeas(user.id) }
   })
 }
 
 export async function POST(request: NextRequest) {
   return apiHandler(async () => {
-    const user = await requireApiUser()
+    const user = await currentWorkspace()
     const body = ideaSchema.parse(await request.json())
     const store = await getStore()
 

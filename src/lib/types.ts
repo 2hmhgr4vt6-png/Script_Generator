@@ -129,7 +129,6 @@ export type ProblemStatus = 'new' | 'saved' | 'script-created' | 'dismissed'
 export interface User {
   id: string
   email: string
-  password_hash: string
   name: string | null
   role: string
   created_at: string

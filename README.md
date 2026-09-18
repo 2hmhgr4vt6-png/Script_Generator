@@ -21,6 +21,7 @@ go from a raw idea to a finished, sourced video script:
 - [What it does](#what-it-does)
 - [Tech stack](#tech-stack)
 - [Quick start](#quick-start)
+- [Access and exposure](#access-and-exposure)
 - [Environment variables](#environment-variables)
 - [Demo mode vs live mode](#demo-mode-vs-live-mode)
 - [Database](#database)
@@ -38,7 +39,7 @@ go from a raw idea to a finished, sourced video script:
 
 | Area | What is implemented |
 | --- | --- |
-| **Auth** | Server-side sign-in, bcrypt hashing, signed HttpOnly session cookie, edge-guarded routes, login throttling, password change, logout, session expiry |
+| **Access** | No sign-in. Open the URL and start working — see [Access and exposure](#access-and-exposure) |
 | **Raw ideas** | Full brief capture — topic, language, duration (incl. custom), content type, audience, platform, tone — with auto-categorisation |
 | **Research** | AI query planning → multi-query search → source classification (official / government / university / news / community / blog) → fact extraction with verification status → conflict detection |
 | **Problem discovery** | Reddit (official OAuth API), YouTube Data API, Meta Graph API, plus web search; question detection, topic classification, relevance scoring, dedupe by source URL |
@@ -57,7 +58,6 @@ go from a raw idea to a finished, sourced video script:
 - **Tailwind CSS** with a Bhasika design system (pure black canvas, charcoal cards, one accent orange, no gradients)
 - **Lucide** icons, hand-rolled shadcn-style component kit
 - **Zod** for every request body
-- **bcryptjs** + **jose** for auth
 - **Postgres / Supabase** in production, a local JSON store in development
 - Pluggable **AI**, **search** and **social** providers
 
@@ -70,28 +70,36 @@ git clone <this-repo>
 cd Script_Generator
 npm install
 
-cp .env.example .env.local
-# Generate your own signing secret and paste it into AUTH_SECRET:
-openssl rand -base64 32
-
+cp .env.example .env.local   # optional — everything in it is optional
 npm run dev
 # http://localhost:3000
 ```
 
-Sign in with the admin account from your `.env.local`. The template ships with
-`admin@bhasika.com` and a bcrypt hash of the initial password that was provisioned for this build.
-
-> **Change the initial password before anyone else uses this.** Sign in, open **Settings → Account &
-> security**, and set a new one. Or generate a fresh hash and replace `BHASIKA_ADMIN_PASSWORD_HASH`:
->
-> ```bash
-> npm run hash-password
-> ```
->
-> The plaintext password is never stored, never logged, and never appears in this repository.
+That is the whole setup. There is no sign-in: the app opens straight onto the dashboard and creates
+its single local workspace on first load.
 
 With no API keys the studio runs in **demo mode**: fully usable, with every generated item badged
 *Sample data*.
+
+---
+
+## Access and exposure
+
+**The studio has no authentication.** Anyone who can reach the URL can read every idea, research
+session, discovered problem and script in it, generate new ones, delete anything, and spend your
+configured API keys' quota. There is no login page, no session, and no per-route check.
+
+That is fine for the intended use — one team, running it locally or on a private network. If it goes
+anywhere reachable, put the access control in front of it:
+
+| Where it runs | What to put in front |
+| --- | --- |
+| A laptop | Nothing. Bind to `localhost` (the default) and it is not reachable from the network |
+| An internal server | VPN or an office-network-only firewall rule |
+| Vercel | Deployment Protection (Vercel Authentication or Password Protection), in Project → Settings → Deployment Protection |
+| Behind your own proxy | Basic auth, SSO/OIDC, or a Cloudflare Access policy on the hostname |
+
+The same applies to the API routes — `/api/*` is as open as the pages are.
 
 ---
 
@@ -102,11 +110,6 @@ Everything lives in `.env.local` (git-ignored). `.env.example` is the template.
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `NEXT_PUBLIC_APP_URL` | no | Public base URL |
-| `AUTH_SECRET` | **yes in production** | Signs the session cookie. `openssl rand -base64 32` |
-| `AUTH_SESSION_TTL_HOURS` | no | Session lifetime, default `12` |
-| `BHASIKA_ADMIN_EMAIL` | yes | Admin account email |
-| `BHASIKA_ADMIN_PASSWORD_HASH` | yes | **bcrypt hash only** — never the plaintext |
-| `BHASIKA_ADMIN_PASSWORD_HASH_B64` | no | Base64 of the hash, for hosting UIs where `$` escaping is awkward |
 | `DATABASE_URL` | no | Postgres/Supabase. Without it, a local JSON store is used |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | no | Supabase project details |
 | `AI_PROVIDER` | no | `openai` or `anthropic` |
@@ -117,21 +120,6 @@ Everything lives in `.env.local` (git-ignored). `.env.example` is the template.
 | `YOUTUBE_API_KEY` | no | YouTube Data API v3 |
 | `FACEBOOK_ACCESS_TOKEN`, `INSTAGRAM_ACCESS_TOKEN` | no | Meta Graph API |
 | `BHASIKA_DEMO_MODE` | no | Force demo mode even with keys present |
-
-### One gotcha worth knowing
-
-A bcrypt hash starts with `$2a$12$…`, and dotenv expands unescaped `$VAR` when the file loads —
-which silently truncates the hash and makes every sign-in fail with "incorrect password". So **escape
-each `$`**:
-
-```dotenv
-BHASIKA_ADMIN_PASSWORD_HASH=\$2a\$12\$FGfvCef9SyLA/Cxxb...
-```
-
-`npm run hash-password` prints the line already escaped, plus a base64 alternative. If the value is
-still malformed the app logs a specific error at startup rather than failing sign-in mysteriously.
-
----
 
 ## Demo mode vs live mode
 
@@ -167,11 +155,16 @@ npm run db:migrate
 Or apply `supabase/migrations/0001_init.sql` through the Supabase SQL editor.
 
 The schema creates `users`, `user_preferences`, `ideas`, `research_sessions`, `research_sources`,
-`audience_problems`, `scripts`, `script_versions`, `behavior_events`, `scheduled_syncs` and
-`login_attempts`, with foreign keys, indexes, timestamps and row-level security enabled.
+`audience_problems`, `scripts`, `script_versions`, `behavior_events` and `scheduled_syncs`, with
+foreign keys, indexes, timestamps and row-level security enabled.
 
-The app scopes every query by `user_id` in application code and connects with the service role; RLS
-is there so that any other client (for example the anon key) cannot read another user's rows.
+There is one workspace row in `users`, created automatically on first load, and every other table is
+scoped to it. Keeping that scoping means the schema is ready if accounts are ever added back, and it
+costs nothing today.
+
+The app connects with the service role, which bypasses RLS. RLS is enabled with no permissive policy
+so that every *other* client — the anon key, the Supabase data browser as an end user — is denied by
+default.
 
 ---
 
@@ -236,25 +229,22 @@ timer) with an authenticated session — the app does not run its own background
 
 ## Security
 
-- **No plaintext passwords** anywhere — in the database, the repository, or the logs. bcrypt, 12 rounds.
-- **Server-side auth only.** There is no frontend password check to bypass.
-- **Signed HttpOnly, SameSite=Lax cookies**, `Secure` in production, with a configurable TTL.
-- **Two-layer route protection**: edge middleware verifies the signature on every dashboard page and
-  API route; the server then re-resolves the account before doing any work.
-- **Login throttling**: 5 attempts per email per 5 minutes, then a 15-minute lockout.
-- **Password policy** on change: 10+ characters with upper, lower, digit and symbol. Changing the
-  password invalidates the session.
-- **Zod validation** on every request body; the Postgres driver validates every identifier against a
-  column whitelist and binds every value as a parameter.
-- **Safe error messages.** Provider errors (which are written to be user-facing) are surfaced;
-  anything else returns a generic message and logs server-side without secrets.
+The studio has no authentication — see [Access and exposure](#access-and-exposure) for what that
+means and what to put in front of it. Everything below is what the app itself still does:
+
 - **No API keys in the browser.** Every key is read in server-only modules. `/api/status` reports
   whether a key is present, never its value.
+- **Zod validation** on every request body.
+- **SQL injection is structurally prevented**: the Postgres driver validates every identifier against
+  a column whitelist and binds every value as a parameter.
+- **Safe error messages.** Provider errors (which are written to be user-facing) are surfaced;
+  anything else returns a generic message and logs server-side without secrets.
+- **RLS enabled with no permissive policy**, so clients other than the app's service-role connection
+  are denied by default.
+- **No secrets in the repository**: `.env.local` and `data/store.json` are git-ignored.
 - Security headers: `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`,
   `Permissions-Policy`.
-
-Rate limiting is in-process, which suits a single-instance internal tool. Behind several instances,
-back `src/lib/auth/rate-limit.ts` with Redis or a Supabase table.
+- Pages are marked `noindex, nofollow`.
 
 ---
 
@@ -263,9 +253,9 @@ back `src/lib/auth/rate-limit.ts` with Redis or a Supabase table.
 ```
 src/
 ├── app/
-│   ├── (dashboard)/        # Protected pages: dashboard, ideas, problems, research, script, scripts, settings
-│   ├── api/                # Route handlers (auth, ideas, research, problems, hooks, scripts, settings, status)
-│   ├── login/ privacy/     # Public pages
+│   ├── (dashboard)/        # Dashboard, ideas, problems, research, script, scripts, settings
+│   ├── api/                # Route handlers (ideas, research, problems, hooks, scripts, settings, status)
+│   ├── privacy/            # Privacy page
 │   └── layout.tsx  error.tsx  not-found.tsx
 ├── components/
 │   ├── ui/                 # Button, Card, Input, Badge, Dialog, Toast, states
@@ -277,13 +267,11 @@ src/
 │   ├── social/             # SocialProvider interface + Reddit, YouTube, Meta
 │   ├── research/           # Query planning, classification, fact extraction, problem discovery, demo data
 │   ├── scripts/            # Prompts, duration engine, hooks, generation, editing, fact checking
-│   ├── auth/               # Password, session, service, guards, rate limiting
 │   ├── db/                 # Store interface + JSON and Postgres drivers, column whitelist
 │   ├── learning/           # Rule-based preference tracking
-│   └── types.ts  validation.ts  data.ts  api.ts  env.ts
-├── middleware.ts           # Edge auth gate
+│   └── types.ts  validation.ts  data.ts  api.ts  env.ts  user.ts
 supabase/migrations/        # SQL schema
-scripts/                    # hash-password, migrate
+scripts/                    # migrate
 ```
 
 Every provider sits behind an interface, so swapping one is a single line in its `index.ts` factory.
@@ -299,13 +287,10 @@ tolerance band, and the generator is given a word budget rather than being asked
 
 ## API reference
 
-All routes require a session. Errors return `{ error, code }`.
+No route requires a session — they are all open. Errors return `{ error, code }`.
 
 | Method | Route | Purpose |
 | --- | --- | --- |
-| `POST` | `/api/auth/login` | Sign in (throttled) |
-| `POST` | `/api/auth/logout` | Clear the session |
-| `POST` | `/api/auth/change-password` | Change password, then re-authenticate |
 | `GET POST` | `/api/ideas` | List / create ideas |
 | `GET POST` | `/api/research` | List sessions / run a research pass |
 | `GET` | `/api/problems` | List problems with filters |
@@ -324,7 +309,7 @@ All routes require a session. Errors return `{ error, code }`.
 | `GET PATCH` | `/api/settings/preferences` | Studio defaults |
 | `GET DELETE` | `/api/settings/learning` | Insights / delete learning history |
 | `GET` | `/api/status` | Integration status (never key values) |
-| `GET` | `/api/health` | Health check (public) |
+| `GET` | `/api/health` | Health check |
 
 ---
 
@@ -333,12 +318,13 @@ All routes require a session. Errors return `{ error, code }`.
 ### Vercel
 
 1. Import the repository.
-2. Add every environment variable from `.env.example` in **Project → Settings → Environment
-   Variables**. For the password hash, either escape each `$` or use
-   `BHASIKA_ADMIN_PASSWORD_HASH_B64`.
+2. Add the environment variables you need from `.env.example` in **Project → Settings → Environment
+   Variables**.
 3. Set `DATABASE_URL` to your Supabase connection string and run `npm run db:migrate` locally against
    it once.
-4. Deploy. Routes are dynamic; nothing user-specific is cached.
+4. **Turn on Deployment Protection** in **Project → Settings → Deployment Protection**. Without it the
+   deployment is public — see [Access and exposure](#access-and-exposure).
+5. Deploy. Routes are dynamic; nothing is cached between requests.
 
 ### Docker / self-hosted
 
@@ -348,13 +334,12 @@ npm run build
 npm start          # listens on $PORT, default 3000
 ```
 
-Put it behind TLS — the session cookie is marked `Secure` in production and will not be sent over
-plain HTTP.
+Bind it to `localhost` and reach it over an SSH tunnel, or put an authenticating reverse proxy in
+front of it. Do not expose the port directly.
 
 ### Checklist before the team uses it
 
-- [ ] `AUTH_SECRET` is freshly generated, not the template value
-- [ ] The admin password has been changed from the initial one
+- [ ] Access control is in place in front of the app, or it is only reachable from localhost
 - [ ] `DATABASE_URL` points at Postgres, and the migration has been applied
 - [ ] HTTPS is terminated in front of the app
 - [ ] `.env.local` is not committed (it is git-ignored)
@@ -390,8 +375,9 @@ Stated plainly rather than papered over:
 - **Meta sources are account-scoped**, not platform-wide — Meta does not expose public keyword search.
 - **Rate limiting is per-process**; use Redis behind multiple instances.
 - **The JSON store is for development.** Use Postgres for anything shared or persistent.
-- **Single-team design.** Every row is scoped by `user_id` and the schema supports more accounts, but
-  there is no invite or user-management UI yet — provision additional users directly in the database.
+- **No authentication and no multi-user separation.** One shared workspace, open to anyone who can
+  reach it. Rows are still scoped to a workspace id, so accounts could be layered back on without a
+  data migration.
 - **Fact checking is an assistant, not an approver.** It checks the script against the attached
   sources only. A human still reads anything about fees, deadlines or visa rules before it ships.
 

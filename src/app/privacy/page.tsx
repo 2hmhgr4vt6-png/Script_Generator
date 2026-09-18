@@ -9,7 +9,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
     title: 'What this tool stores',
     body: [
       'Bhasika AI Content Studio is an internal tool for the Bhasika content team. It stores the raw ideas you type, the research sessions you run and the sources they returned, the audience problems discovered from public sources, the scripts you generate and every version you save, and a log of your own content preferences.',
-      'It stores one account record per team member: an email address and a bcrypt hash of the password. Plaintext passwords are never stored or logged.',
+      'There are no user accounts and no passwords. The studio is a single shared workspace, so it stores no personal credentials of any kind.',
     ],
   },
   {
@@ -36,7 +36,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: 'Access and retention',
     body: [
-      'Every dashboard page and API route requires an authenticated session. Sessions are held in a signed, HttpOnly, SameSite cookie and expire after the configured lifetime.',
+      'This deployment has no sign-in. Anyone who can reach its URL can read and change everything stored in it, so it is intended to run on a local machine or behind separate access control such as a VPN or an authenticating proxy. Whoever operates the deployment is responsible for that boundary.',
       'You can delete any script, problem or learning event from inside the app. Deleting a script removes its versions with it.',
     ],
   },

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { requireApiUser, UnauthorizedError } from '@/lib/auth/guard'
+import { currentWorkspace } from '@/lib/user'
 import { getScript } from '@/lib/data'
 import { recordEvent } from '@/lib/learning'
 import { scriptToPlainText } from '@/lib/scripts/prompts'
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireApiUser()
+    const user = await currentWorkspace()
     const script = await getScript(user.id, params.id)
     if (!script) return NextResponse.json({ error: 'That script was not found.' }, { status: 404 })
 
@@ -33,9 +33,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       },
     })
   } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: error.message }, { status: 401 })
-    }
+    console.error('[bhasika:export]', (error as Error).message)
     return NextResponse.json({ error: 'The export failed. Please try again.' }, { status: 500 })
   }
 }

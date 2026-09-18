@@ -1,7 +1,6 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
-import { UnauthorizedError } from '@/lib/auth/guard'
 
 export class AppError extends Error {
   constructor(
@@ -22,9 +21,6 @@ export function apiHandler<T>(handler: () => Promise<T>): Promise<NextResponse> 
   return handler()
     .then((data) => NextResponse.json(data ?? { ok: true }))
     .catch((error: unknown) => {
-      if (error instanceof UnauthorizedError) {
-        return NextResponse.json({ error: error.message, code: 'unauthorized' }, { status: 401 })
-      }
       if (error instanceof ZodError) {
         return NextResponse.json(
           { error: error.issues[0]?.message ?? 'That input is not valid.', code: 'validation', issues: error.issues },

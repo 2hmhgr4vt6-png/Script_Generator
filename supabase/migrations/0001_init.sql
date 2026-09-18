@@ -4,14 +4,15 @@
 
 create extension if not exists "pgcrypto";
 
+-- The studio runs without authentication. This table exists so every row stays
+-- scoped to a workspace id, which keeps the schema ready if accounts are added.
 create table if not exists users (
-  id            uuid primary key default gen_random_uuid(),
-  email         text not null unique,
-  password_hash text not null,
-  name          text,
-  role          text not null default 'admin',
-  created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now()
+  id         uuid primary key default gen_random_uuid(),
+  email      text not null unique,
+  name       text,
+  role       text not null default 'studio',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists user_preferences (
@@ -165,18 +166,12 @@ create table if not exists scheduled_syncs (
   updated_at  timestamptz not null default now()
 );
 
-create table if not exists login_attempts (
-  id         uuid primary key default gen_random_uuid(),
-  identifier text not null,
-  succeeded  boolean not null default false,
-  created_at timestamptz not null default now()
-);
-create index if not exists login_attempts_identifier_idx on login_attempts (identifier, created_at desc);
-
 -- Row level security.
--- The app connects with the service role and scopes every query by user_id in
--- application code. RLS is enabled so that any other client (for example the
--- Supabase anon key) cannot read another user's rows.
+-- The app connects with the service role, which bypasses RLS. Enabling RLS with
+-- no permissive policy means every *other* client (the anon key, a leaked
+-- publishable key, the Supabase data browser as an end user) is denied by
+-- default. Since the studio has no per-user login, there is no auth.uid() to
+-- write a policy against — access control belongs in front of the deployment.
 alter table users             enable row level security;
 alter table user_preferences  enable row level security;
 alter table ideas             enable row level security;
@@ -187,22 +182,3 @@ alter table scripts           enable row level security;
 alter table script_versions   enable row level security;
 alter table behavior_events   enable row level security;
 alter table scheduled_syncs   enable row level security;
-alter table login_attempts    enable row level security;
-
-do $$
-declare
-  t text;
-begin
-  foreach t in array array[
-    'user_preferences','ideas','research_sessions','research_sources',
-    'audience_problems','scripts','script_versions','behavior_events','scheduled_syncs'
-  ] loop
-    begin
-      execute format(
-        'create policy %I on %I for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid())',
-        t || '_own_rows', t
-      );
-    exception when duplicate_object then null;
-    end;
-  end loop;
-end $$;

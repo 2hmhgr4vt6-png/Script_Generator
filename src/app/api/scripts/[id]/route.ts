@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { AppError, apiHandler } from '@/lib/api'
-import { requireApiUser } from '@/lib/auth/guard'
+import { currentWorkspace } from '@/lib/user'
 import { getScript } from '@/lib/data'
 import { getStore, newId, now } from '@/lib/db'
 import { recordEvent } from '@/lib/learning'
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
   return apiHandler(async () => {
-    const user = await requireApiUser()
+    const user = await currentWorkspace()
     const script = await getScript(user.id, params.id)
     if (!script) throw new AppError('That script was not found.', 404, 'not_found')
     return { script }
@@ -20,7 +20,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   return apiHandler(async () => {
-    const user = await requireApiUser()
+    const user = await currentWorkspace()
     const script = await getScript(user.id, params.id)
     if (!script) throw new AppError('That script was not found.', 404, 'not_found')
 
@@ -59,7 +59,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
 export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
   return apiHandler(async () => {
-    const user = await requireApiUser()
+    const user = await currentWorkspace()
     const script = await getScript(user.id, params.id)
     if (!script) throw new AppError('That script was not found.', 404, 'not_found')
     const store = await getStore()

@@ -8,7 +8,7 @@ import 'server-only'
  * before it reaches a query string.
  */
 export const TABLES = {
-  users: ['id', 'email', 'password_hash', 'name', 'role', 'created_at', 'updated_at'],
+  users: ['id', 'email', 'name', 'role', 'created_at', 'updated_at'],
   user_preferences: [
     'id', 'user_id', 'default_language', 'default_duration', 'default_platform', 'default_tone',
     'learning_enabled', 'research_schedule', 'research_schedule_cron', 'created_at', 'updated_at',
@@ -40,7 +40,6 @@ export const TABLES = {
   scheduled_syncs: [
     'id', 'user_id', 'source', 'frequency', 'cron', 'last_run_at', 'last_status', 'created_at', 'updated_at',
   ],
-  login_attempts: ['id', 'identifier', 'succeeded', 'created_at'],
 } as const
 
 export type TableName = keyof typeof TABLES

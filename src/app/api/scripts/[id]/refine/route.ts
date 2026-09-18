@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { AppError, apiHandler } from '@/lib/api'
-import { requireApiUser } from '@/lib/auth/guard'
+import { currentWorkspace } from '@/lib/user'
 import { getScript } from '@/lib/data'
 import { recordEvent } from '@/lib/learning'
 import { refineScript, refineSection, type EditAction } from '@/lib/scripts/edit'
@@ -15,7 +15,7 @@ export const maxDuration = 120
  */
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   return apiHandler(async () => {
-    const user = await requireApiUser()
+    const user = await currentWorkspace()
     const script = await getScript(user.id, params.id)
     if (!script) throw new AppError('That script was not found.', 404, 'not_found')
 

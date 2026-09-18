@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { apiHandler } from '@/lib/api'
-import { requireApiUser } from '@/lib/auth/guard'
+import { currentWorkspace } from '@/lib/user'
 import { getProblem } from '@/lib/data'
 import { getStore } from '@/lib/db'
 import { generateHooks } from '@/lib/scripts/hooks'
@@ -12,7 +12,7 @@ export const maxDuration = 90
 
 export async function POST(request: NextRequest) {
   return apiHandler(async () => {
-    const user = await requireApiUser()
+    const user = await currentWorkspace()
     const body = hookSchema.parse(await request.json())
     const store = await getStore()
 

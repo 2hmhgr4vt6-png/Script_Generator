@@ -1,59 +1,23 @@
 'use client'
 
-import { ChevronDown, LogOut, Menu, Search, Settings, X } from 'lucide-react'
+import { Menu, Search, Settings, X } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { useToast } from '@/components/ui/toast'
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Wordmark } from './logo'
 import { titleFor } from './nav-items'
 import { SidebarNav } from './sidebar'
 
-export function Topbar({
-  user,
-  defaultLanguage,
-  demoMode,
-}: {
-  user: { email: string; name: string | null }
-  defaultLanguage: 'ne' | 'en'
-  demoMode: boolean
-}) {
+export function Topbar({ defaultLanguage, demoMode }: { defaultLanguage: 'ne' | 'en'; demoMode: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
-  const toast = useToast()
   const [mobileNav, setMobileNav] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [loggingOut, setLoggingOut] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setMobileNav(false)
-    setMenuOpen(false)
   }, [pathname])
-
-  useEffect(() => {
-    if (!menuOpen) return
-    const onClick = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false)
-    }
-    document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
-  }, [menuOpen])
-
-  async function logout() {
-    setLoggingOut(true)
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' })
-      router.push('/login')
-      router.refresh()
-    } catch {
-      toast.error('Could not sign out', 'Please try again.')
-      setLoggingOut(false)
-    }
-  }
 
   function onSearch(event: React.FormEvent) {
     event.preventDefault()
@@ -100,50 +64,17 @@ export function Topbar({
           ) : null}
           <span
             title="Default script language"
-            className="hidden rounded-full border border-line bg-elevated px-2.5 py-1 text-[11px] font-medium text-muted sm:inline-flex"
+            className="rounded-full border border-line bg-elevated px-2.5 py-1 text-[11px] font-medium text-muted"
           >
             {defaultLanguage === 'ne' ? 'नेपाली · NE' : 'English · EN'}
           </span>
-
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setMenuOpen((open) => !open)}
-              className="flex items-center gap-2 rounded-lg border border-line bg-elevated px-2.5 py-1.5 text-sm text-muted transition-colors hover:border-line-strong hover:text-ink"
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-black">
-                {(user.name ?? user.email).charAt(0).toUpperCase()}
-              </span>
-              <span className="hidden max-w-[10rem] truncate sm:block">{user.email}</span>
-              <ChevronDown className="h-3.5 w-3.5" />
-            </button>
-
-            {menuOpen ? (
-              <div
-                role="menu"
-                className="absolute right-0 top-full z-50 mt-2 w-56 animate-fade-in rounded-lg border border-line bg-elevated p-1.5 shadow-xl shadow-black/50"
-              >
-                <div className="border-b border-line px-2.5 py-2">
-                  <p className="truncate text-xs font-medium text-ink">{user.name ?? 'Bhasika'}</p>
-                  <p className="truncate text-[11px] text-muted">{user.email}</p>
-                </div>
-                <Link
-                  href="/settings"
-                  className="mt-1 flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-muted transition-colors hover:bg-card hover:text-ink"
-                >
-                  <Settings className="h-4 w-4" /> Settings
-                </Link>
-                <button
-                  onClick={logout}
-                  disabled={loggingOut}
-                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-muted transition-colors hover:bg-card hover:text-danger disabled:opacity-50"
-                >
-                  <LogOut className="h-4 w-4" /> {loggingOut ? 'Signing out…' : 'Log out'}
-                </button>
-              </div>
-            ) : null}
-          </div>
+          <Link
+            href="/settings"
+            aria-label="Settings"
+            className="rounded-lg border border-line bg-elevated p-2 text-muted transition-colors hover:border-line-strong hover:text-ink"
+          >
+            <Settings className="h-4 w-4" />
+          </Link>
         </div>
       </header>
 
@@ -166,11 +97,6 @@ export function Topbar({
           </div>
           <div className="flex-1 overflow-y-auto py-4">
             <SidebarNav onNavigate={() => setMobileNav(false)} />
-          </div>
-          <div className="border-t border-line p-3">
-            <Button variant="ghost" className="w-full justify-start" onClick={logout} loading={loggingOut}>
-              <LogOut className="h-4 w-4" /> Log out
-            </Button>
           </div>
         </div>
       </div>

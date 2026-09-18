@@ -1,12 +1,12 @@
 import { apiHandler } from '@/lib/api'
-import { requireApiUser } from '@/lib/auth/guard'
+import { currentWorkspace } from '@/lib/user'
 import { clearLearningData, getInsights } from '@/lib/learning'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   return apiHandler(async () => {
-    const user = await requireApiUser()
+    const user = await currentWorkspace()
     return { insights: await getInsights(user.id) }
   })
 }
@@ -14,7 +14,7 @@ export async function GET() {
 /** Deletes every behaviour event for this account. */
 export async function DELETE() {
   return apiHandler(async () => {
-    const user = await requireApiUser()
+    const user = await currentWorkspace()
     const removed = await clearLearningData(user.id)
     return { ok: true, removed }
   })

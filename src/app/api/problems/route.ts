@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { apiHandler } from '@/lib/api'
-import { requireApiUser } from '@/lib/auth/guard'
+import { currentWorkspace } from '@/lib/user'
 import { listProblems } from '@/lib/data'
 import { socialStatuses } from '@/lib/social'
 
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   return apiHandler(async () => {
-    const user = await requireApiUser()
+    const user = await currentWorkspace()
     const params = request.nextUrl.searchParams
     const problems = await listProblems(user.id, {
       category: (params.get('category') as never) ?? undefined,

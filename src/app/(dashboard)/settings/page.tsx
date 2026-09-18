@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 import { SettingsWorkspace } from '@/components/settings/settings-workspace'
 import { aiStatus } from '@/lib/ai'
-import { requirePageUser } from '@/lib/auth/guard'
-import { ensurePreferences } from '@/lib/auth/service'
+import { currentWorkspace, ensurePreferences } from '@/lib/user'
 import { getStore } from '@/lib/db'
 import { isDemoMode } from '@/lib/env'
 import { getInsights } from '@/lib/learning'
@@ -13,7 +12,7 @@ export const metadata: Metadata = { title: 'Settings' }
 export const dynamic = 'force-dynamic'
 
 export default async function SettingsPage() {
-  const user = await requirePageUser()
+  const user = await currentWorkspace()
   const [prefs, insights, store] = await Promise.all([
     ensurePreferences(user.id),
     getInsights(user.id),
@@ -22,7 +21,6 @@ export default async function SettingsPage() {
 
   return (
     <SettingsWorkspace
-      user={{ email: user.email, name: user.name }}
       preferences={prefs}
       insights={insights}
       integrations={{

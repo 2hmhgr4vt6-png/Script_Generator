@@ -2,6 +2,12 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  async redirects() {
+    // A real 308 at the routing layer. A `redirect()` inside a statically
+    // rendered page emits a body-only redirect with no Location header, which
+    // non-browser clients cannot follow.
+    return [{ source: '/', destination: '/dashboard', permanent: false }]
+  },
   async headers() {
     return [
       {
