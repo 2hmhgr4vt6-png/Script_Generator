@@ -165,6 +165,7 @@ quota costs nothing and no billing account is required.
 | **Groq** | Free, no card | Very fast; English scripts | <https://console.groq.com/keys> |
 | **OpenRouter** | Free models available | Trying several models with one key — use ids ending in `:free` | <https://openrouter.ai/keys> |
 | **Ollama** | Free, offline | No account at all; runs on your own machine | <https://ollama.com/download> |
+| **DeepSeek** | Paid, but inexpensive | Strong quality per rupee if you already have a key | <https://platform.deepseek.com/api_keys> |
 
 **Ollama** is worth knowing about if you would rather nothing left your computer: install it, run
 `ollama pull llama3.1`, then point the studio at `http://localhost:11434/v1`. No key, no limits, no
@@ -175,6 +176,19 @@ pick which one writes. On *Automatic* the studio prefers the free providers.
 
 > Free tiers and model names change. Every figure above was checked in September 2026 — if something
 > looks different, trust the provider's own pricing page over this file.
+
+### If Test fails
+
+| Message | What it means |
+| --- | --- |
+| *"The … API key was rejected"* | The key is wrong, revoked, or pasted with whitespace. Re-copy it. |
+| *"… does not recognise the model"* | The model id is not served by that provider. Pick one from the dropdown. |
+| *"used its whole token budget on reasoning"* | A thinking model spent the budget before writing. Switch to a Flash model, or a shorter target duration. |
+| *"rate limit reached"* | Free tiers cap requests per minute and per day. Wait and retry. |
+| *"Could not reach Ollama"* | Ollama is not running. Start it with `ollama serve`. |
+
+**Each key belongs on its own card.** A DeepSeek key on the OpenAI card will be rejected, because it
+is sent to `api.openai.com`. The cards are separate services, not interchangeable slots.
 
 ---
 
@@ -188,6 +202,7 @@ Every provider key is entered in **Settings → API keys**. No file editing, no 
 | Groq | Free, no card | The same, on fast open models |
 | OpenRouter | Free models available | The same, across many models |
 | Ollama | Free, offline | The same, on your own machine |
+| DeepSeek | Paid | The same |
 | OpenAI | **Paid only** | The same |
 | Anthropic | **Paid only** | The same |
 | Web search (Tavily / Serper / Exa) | Tavily free, no card | Live internet research and public-discussion discovery |
@@ -232,11 +247,13 @@ the settings that can only come from the environment.
 | `CREDENTIALS_SECRET` | **recommended** | Encrypts keys stored via Settings. Without it, a key file is generated locally |
 | `DATABASE_URL` | no | Postgres/Supabase. Without it, a local JSON store is used |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | no | Supabase project details |
-| `AI_PROVIDER` | no | `gemini`, `groq`, `openrouter`, `ollama`, `openai` or `anthropic`. Unset = first one configured |
+| `AI_PROVIDER` | no | `gemini`, `groq`, `openrouter`, `ollama`, `deepseek`, `openai` or `anthropic`. Unset = first one configured |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | no | Google Gemini (free tier, no card) |
 | `GROQ_API_KEY`, `GROQ_MODEL` | no | Groq (free tier, no card) |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | no | OpenRouter (free models available) |
 | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` | no | A local Ollama server — no key needed |
+| `DEEPSEEK_API_KEY`, `DEEPSEEK_MODEL` | no | DeepSeek |
+| `<PROVIDER>_BASE_URL` | no | Overrides any preset's endpoint, for a proxy or gateway |
 | `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL` | no | OpenAI, or any OpenAI-compatible endpoint |
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | no | Anthropic |
 | `SEARCH_PROVIDER`, `SEARCH_API_KEY` | no | `tavily` (default), `serper`, or `exa` |
@@ -309,11 +326,17 @@ presets over a single client rather than separate implementations:
 | `groq` | `api.groq.com/openai/v1` | `GROQ_API_KEY` |
 | `openrouter` | `openrouter.ai/api/v1` | `OPENROUTER_API_KEY` |
 | `ollama` | `OLLAMA_BASE_URL` (default `localhost:11434/v1`) | none |
+| `deepseek` | `api.deepseek.com` | `DEEPSEEK_API_KEY` |
 | `openai` | `OPENAI_BASE_URL` (default `api.openai.com/v1`) | `OPENAI_API_KEY` |
 | `anthropic` | `api.anthropic.com` | `ANTHROPIC_API_KEY` |
 
-Because OpenAI's preset honours `OPENAI_BASE_URL`, any other OpenAI-compatible endpoint (Azure, an
-internal gateway, a self-hosted server) works without new code.
+Every preset honours a `<PROVIDER>_BASE_URL` override, so an internal gateway, proxy or self-hosted
+endpoint works without new code.
+
+**Reasoning models.** Gemini 3 always thinks before answering, and those tokens come out of
+`max_tokens` — too small a ceiling returns a successful but empty message. The Gemini preset
+therefore sends `reasoning_effort: low` and enforces a token floor, and an empty response is
+reported as such rather than as a generic failure.
 
 Without a key: research still searches and stores sources, but facts are not extracted, and hooks and
 scripts come from the labelled demo generator. AI editing and fact checking return a clear

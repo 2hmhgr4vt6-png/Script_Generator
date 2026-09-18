@@ -53,6 +53,11 @@ async function decryptRow(row: IntegrationRow): Promise<Record<string, string>> 
   return out
 }
 
+/**
+ * Base-URL overrides are honoured from the environment for every preset, so a
+ * proxy or gateway can be pointed at without a code change. They are not shown
+ * in Settings because they are an advanced escape hatch, not routine setup.
+ */
 export async function resolveCredentials(userId: string): Promise<ResolvedCredentials> {
   const stored: Record<string, string> = {}
   for (const row of await loadRows(userId)) {

@@ -1,6 +1,15 @@
 import 'server-only'
 import { AIProviderError, type AIMessage, type AIProvider, type CompletionOptions } from '../types'
 
+const DISPLAY_NAMES: Record<string, string> = {
+  openai: 'OpenAI',
+  gemini: 'Gemini',
+  groq: 'Groq',
+  openrouter: 'OpenRouter',
+  ollama: 'Ollama',
+  deepseek: 'DeepSeek',
+}
+
 /** Pulls the human-readable sentence out of a provider error body. */
 function extractMessage(body: string): string {
   try {
@@ -14,37 +23,43 @@ function extractMessage(body: string): string {
   return body.replace(/\s+/g, ' ').trim().slice(0, 180)
 }
 
+export interface OpenAICompatibleOptions {
+  name?: string
+  requestDefaults?: Record<string, unknown>
+  minMaxTokens?: number
+}
+
 /**
  * Works against the OpenAI API or any OpenAI-compatible endpoint. Gemini, Groq,
- * OpenRouter and Ollama all expose one, so they share this client.
+ * OpenRouter, DeepSeek and Ollama all expose one, so they share this client.
  */
 export class OpenAIProvider implements AIProvider {
   readonly isLive = true
+  readonly name: string
+  private requestDefaults: Record<string, unknown>
+  private minMaxTokens: number
 
   constructor(
     private apiKey: string,
     readonly model: string,
     private baseUrl: string,
-    /** Display name — Gemini, Groq, OpenRouter and Ollama all use this client. */
-    readonly name: string = 'openai',
-  ) {}
+    options: OpenAICompatibleOptions = {},
+  ) {
+    this.name = options.name ?? 'openai'
+    this.requestDefaults = options.requestDefaults ?? {}
+    this.minMaxTokens = options.minMaxTokens ?? 0
+  }
 
   private label(): string {
-    const names: Record<string, string> = {
-      openai: 'OpenAI',
-      gemini: 'Gemini',
-      groq: 'Groq',
-      openrouter: 'OpenRouter',
-      ollama: 'Ollama',
-    }
-    return names[this.name] ?? this.name
+    return DISPLAY_NAMES[this.name] ?? this.name
   }
 
   async complete(messages: AIMessage[], options: CompletionOptions = {}): Promise<string> {
     const body: Record<string, unknown> = {
+      ...this.requestDefaults,
       model: this.model,
       temperature: options.temperature ?? 0.7,
-      max_tokens: options.maxTokens ?? 2000,
+      max_tokens: Math.max(options.maxTokens ?? 2000, this.minMaxTokens),
       messages: options.system ? [{ role: 'system', content: options.system }, ...messages] : messages,
     }
     if (options.json) body.response_format = { type: 'json_object' }
@@ -58,6 +73,7 @@ export class OpenAIProvider implements AIProvider {
         body: JSON.stringify(body),
         signal: controller.signal,
       })
+
       const who = this.label()
       if (response.status === 401 || response.status === 403) {
         throw new AIProviderError(`The ${who} API key was rejected.`, 'invalid-key')
@@ -81,11 +97,31 @@ export class OpenAIProvider implements AIProvider {
         if (response.status === 400 && /api key/i.test(reason)) {
           throw new AIProviderError(`The ${who} API key was rejected.`, 'invalid-key')
         }
+        if (response.status === 400 && /model/i.test(reason)) {
+          throw new AIProviderError(`${who} rejected the model "${this.model}": ${reason}`)
+        }
         throw new AIProviderError(`${who} request failed (${response.status})${reason ? `: ${reason}` : ''}`)
       }
-      const json = (await response.json()) as { choices?: { message?: { content?: string } }[] }
-      const content = json.choices?.[0]?.message?.content
-      if (!content) throw new AIProviderError(`${this.label()} returned an empty response.`)
+
+      const json = (await response.json()) as {
+        choices?: { message?: { content?: string }; finish_reason?: string }[]
+      }
+      const choice = json.choices?.[0]
+      const content = choice?.message?.content
+
+      if (!content) {
+        // Reasoning models spend max_tokens on thinking before writing anything,
+        // so an exhausted budget comes back as a successful but empty message.
+        if (choice?.finish_reason === 'length') {
+          throw new AIProviderError(
+            `${who} used its whole token budget on reasoning and returned no text. ` +
+              `Try a model without reasoning, or a smaller target duration.`,
+          )
+        }
+        throw new AIProviderError(
+          `${who} returned an empty response${choice?.finish_reason ? ` (finish reason: ${choice.finish_reason})` : ''}.`,
+        )
+      }
       return content
     } catch (error) {
       if (error instanceof AIProviderError) throw error

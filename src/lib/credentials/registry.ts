@@ -12,6 +12,7 @@ export type IntegrationId =
   | 'groq'
   | 'openrouter'
   | 'ollama'
+  | 'deepseek'
   | 'openai'
   | 'anthropic'
   | 'search'
@@ -21,7 +22,9 @@ export type IntegrationId =
   | 'instagram'
 
 /** AI providers, in the order they are auto-selected when no explicit choice is stored. */
-export const AI_PROVIDER_IDS = ['gemini', 'groq', 'openrouter', 'ollama', 'openai', 'anthropic'] as const
+export const AI_PROVIDER_IDS = [
+  'gemini', 'groq', 'openrouter', 'ollama', 'deepseek', 'openai', 'anthropic',
+] as const
 export type AIProviderId = (typeof AI_PROVIDER_IDS)[number]
 
 export interface IntegrationField {
@@ -34,6 +37,11 @@ export interface IntegrationField {
   placeholder?: string
   help?: string
   options?: { value: string; label: string }[]
+  /**
+   * Renders the options as a pick-list but still allows a typed value, for
+   * model names that change faster than this file does.
+   */
+  allowCustom?: boolean
 }
 
 export interface IntegrationSpec {
@@ -68,6 +76,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
           { value: 'groq', label: 'Groq' },
           { value: 'openrouter', label: 'OpenRouter' },
           { value: 'ollama', label: 'Ollama (local)' },
+          { value: 'deepseek', label: 'DeepSeek' },
           { value: 'openai', label: 'OpenAI' },
           { value: 'anthropic', label: 'Anthropic' },
         ],
@@ -92,8 +101,14 @@ export const INTEGRATIONS: IntegrationSpec[] = [
         label: 'Model',
         secret: false,
         required: false,
-        placeholder: 'gemini-3.8-flash',
-        help: 'A Flash model — those are the ones on the free tier. Pro models require billing.',
+        allowCustom: true,
+        options: [
+          { value: 'gemini-3.8-flash', label: 'gemini-3.8-flash (recommended)' },
+          { value: 'gemini-3-flash', label: 'gemini-3-flash' },
+          { value: 'gemini-2.5-flash', label: 'gemini-2.5-flash' },
+          { value: 'gemini-2.0-flash', label: 'gemini-2.0-flash' },
+        ],
+        help: 'Flash models are the free tier. Pro models require billing.',
       },
     ],
   },
@@ -115,8 +130,13 @@ export const INTEGRATIONS: IntegrationSpec[] = [
         label: 'Model',
         secret: false,
         required: false,
-        placeholder: 'llama-3.3-70b-versatile',
-        help: 'llama-3.3-70b-versatile is the strongest general model; llama-3.1-8b-instant is faster.',
+        allowCustom: true,
+        options: [
+          { value: 'llama-3.3-70b-versatile', label: 'llama-3.3-70b-versatile (recommended)' },
+          { value: 'llama-3.1-8b-instant', label: 'llama-3.1-8b-instant (faster)' },
+          { value: 'openai/gpt-oss-120b', label: 'openai/gpt-oss-120b' },
+        ],
+        help: 'Pick from the list unless you know Groq serves another id.',
       },
     ],
   },
@@ -137,8 +157,13 @@ export const INTEGRATIONS: IntegrationSpec[] = [
         label: 'Model',
         secret: false,
         required: false,
-        placeholder: 'meta-llama/llama-3.3-70b-instruct:free',
-        help: 'Pick one ending in ":free" to stay at no cost.',
+        allowCustom: true,
+        options: [
+          { value: 'meta-llama/llama-3.3-70b-instruct:free', label: 'llama-3.3-70b-instruct:free' },
+          { value: 'google/gemini-2.0-flash-exp:free', label: 'gemini-2.0-flash-exp:free' },
+          { value: 'deepseek/deepseek-chat:free', label: 'deepseek-chat:free' },
+        ],
+        help: 'Ids ending in ":free" cost nothing. Check openrouter.ai/models for the current list.',
       },
     ],
   },
@@ -167,8 +192,37 @@ export const INTEGRATIONS: IntegrationSpec[] = [
         label: 'Model',
         secret: false,
         required: false,
-        placeholder: 'llama3.1',
-        help: 'Must already be pulled: `ollama pull llama3.1`.',
+        allowCustom: true,
+        options: [
+          { value: 'llama3.1', label: 'llama3.1' },
+          { value: 'llama3.2', label: 'llama3.2' },
+          { value: 'qwen2.5', label: 'qwen2.5' },
+          { value: 'mistral', label: 'mistral' },
+        ],
+        help: 'Must already be pulled, e.g. `ollama pull llama3.1`.',
+      },
+    ],
+  },
+  {
+    id: 'deepseek',
+    label: 'DeepSeek',
+    group: 'ai',
+    summary: 'Low-cost models for the same generation work.',
+    docsUrl: 'https://platform.deepseek.com/api_keys',
+    caveat:
+      'A DeepSeek key belongs here, not on the OpenAI card — they are different services, and OpenAI will reject it.',
+    fields: [
+      { key: 'DEEPSEEK_API_KEY', label: 'API key', secret: true, required: true, placeholder: 'sk-…' },
+      {
+        key: 'DEEPSEEK_MODEL',
+        label: 'Model',
+        secret: false,
+        required: false,
+        allowCustom: true,
+        options: [
+          { value: 'deepseek-flash', label: 'deepseek-flash (recommended)' },
+          { value: 'deepseek-v4-pro', label: 'deepseek-v4-pro' },
+        ],
       },
     ],
   },
@@ -186,8 +240,13 @@ export const INTEGRATIONS: IntegrationSpec[] = [
         label: 'Model',
         secret: false,
         required: false,
-        placeholder: 'gpt-4o-mini',
-        help: 'Defaults to gpt-4o-mini.',
+        allowCustom: true,
+        options: [
+          { value: 'gpt-4o-mini', label: 'gpt-4o-mini' },
+          { value: 'gpt-4o', label: 'gpt-4o' },
+          { value: 'gpt-4.1-mini', label: 'gpt-4.1-mini' },
+        ],
+        help: 'Only for keys issued by OpenAI. A key from another provider belongs on that provider\'s card.',
       },
       {
         key: 'OPENAI_BASE_URL',
@@ -213,8 +272,13 @@ export const INTEGRATIONS: IntegrationSpec[] = [
         label: 'Model',
         secret: false,
         required: false,
-        placeholder: 'claude-sonnet-5',
-        help: 'Defaults to claude-sonnet-5.',
+        allowCustom: true,
+        options: [
+          { value: 'claude-sonnet-5', label: 'claude-sonnet-5' },
+          { value: 'claude-opus-5', label: 'claude-opus-5' },
+          { value: 'claude-haiku-4-5-20251001', label: 'claude-haiku-4.5' },
+        ],
+        help: 'Only for keys issued by Anthropic.',
       },
     ],
   },

@@ -111,7 +111,7 @@ export const problemUpdateSchema = z.object({
 })
 
 export const integrationProviderSchema = z.enum([
-  'ai-routing', 'gemini', 'groq', 'openrouter', 'ollama', 'openai', 'anthropic',
+  'ai-routing', 'gemini', 'groq', 'openrouter', 'ollama', 'deepseek', 'openai', 'anthropic',
   'search', 'reddit', 'youtube', 'facebook', 'instagram',
 ])
 

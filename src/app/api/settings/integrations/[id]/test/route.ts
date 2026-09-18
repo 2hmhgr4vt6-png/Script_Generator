@@ -44,8 +44,11 @@ async function runTest(
   if ((AI_PROVIDER_IDS as readonly string[]).includes(provider)) {
     const ai = buildNamedAIProvider(provider as AIProviderId, credentials)
     if (!ai) throw new Error('No credentials are configured for this provider.')
+    // Reasoning models spend part of max_tokens thinking before writing, so a
+    // tiny budget comes back empty. This is still only a handful of tokens of
+    // actual output.
     const reply = await ai.complete([{ role: 'user', content: 'Reply with the single word: ready' }], {
-      maxTokens: 16,
+      maxTokens: 2048,
       temperature: 0,
     })
     return `Responded using ${ai.model}: "${reply.trim().slice(0, 40)}"`

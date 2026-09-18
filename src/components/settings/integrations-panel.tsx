@@ -9,7 +9,9 @@ import { ConfirmDialog, Dialog } from '@/components/ui/dialog'
 import { Field, Input, Select } from '@/components/ui/input'
 import { ErrorState } from '@/components/ui/states'
 import { useToast } from '@/components/ui/toast'
-import { INTEGRATIONS, type IntegrationSpec, type IntegrationState } from '@/lib/credentials/registry'
+import {
+  INTEGRATIONS, type IntegrationField, type IntegrationSpec, type IntegrationState,
+} from '@/lib/credentials/registry'
 import { apiFetch, cn, formatRelative } from '@/lib/utils'
 
 const GROUP_LABEL: Record<string, string> = {
@@ -330,16 +332,11 @@ export function IntegrationsPanel({
               return (
                 <Field key={field.key} label={field.label} hint={hint}>
                   {field.options ? (
-                    <Select
-                      value={draft[field.key] ?? field.options[0].value}
-                      onChange={(event) => setDraft((d) => ({ ...d, [field.key]: event.target.value }))}
-                    >
-                      {field.options.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </Select>
+                    <ModelPicker
+                      field={field}
+                      value={draft[field.key] ?? ''}
+                      onChange={(value) => setDraft((d) => ({ ...d, [field.key]: value }))}
+                    />
                   ) : (
                     <Input
                       type={field.secret ? 'password' : 'text'}
@@ -381,5 +378,70 @@ export function IntegrationsPanel({
         loading={saving}
       />
     </Card>
+  )
+}
+
+/**
+ * A pick-list for values that are easy to get wrong by typing — model names,
+ * mostly. Known options are offered directly, with "Custom…" kept for ids that
+ * appear after this build ships.
+ */
+function ModelPicker({
+  field,
+  value,
+  onChange,
+}: {
+  field: IntegrationField
+  value: string
+  onChange: (value: string) => void
+}) {
+  const options = field.options ?? []
+  const known = options.some((option) => option.value === value)
+  const [custom, setCustom] = useState(Boolean(value) && !known)
+
+  if (!field.allowCustom) {
+    return (
+      <Select value={value || options[0]?.value} onChange={(event) => onChange(event.target.value)}>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </Select>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      <Select
+        value={custom ? '__custom' : value}
+        onChange={(event) => {
+          if (event.target.value === '__custom') {
+            setCustom(true)
+            onChange('')
+          } else {
+            setCustom(false)
+            onChange(event.target.value)
+          }
+        }}
+      >
+        <option value="">Default ({options[0]?.value})</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+        <option value="__custom">Custom…</option>
+      </Select>
+      {custom ? (
+        <Input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="Exact model id from the provider"
+          autoComplete="off"
+          spellCheck={false}
+        />
+      ) : null}
+    </div>
   )
 }

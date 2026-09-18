@@ -19,22 +19,36 @@ interface OpenAICompatiblePreset {
   /** Ollama runs locally and authenticates nothing. */
   keyless?: boolean
   baseUrlField?: string
+  /** Extra body fields this provider needs (e.g. Gemini's reasoning controls). */
+  requestDefaults?: Record<string, unknown>
+  /**
+   * Floor for max_tokens. Reasoning models spend part of the budget on thinking
+   * before emitting any text, so too small a ceiling returns an empty message.
+   */
+  minMaxTokens?: number
 }
 
 const PRESETS: Record<string, OpenAICompatiblePreset> = {
   gemini: {
+    baseUrlField: 'GEMINI_BASE_URL',
     keyField: 'GEMINI_API_KEY',
     modelField: 'GEMINI_MODEL',
     defaultModel: 'gemini-3.8-flash',
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    // Gemini 3 models always think; 'low' keeps that budget small. Reasoning
+    // tokens come out of max_tokens, hence the floor.
+    requestDefaults: { reasoning_effort: 'low' },
+    minMaxTokens: 1024,
   },
   groq: {
+    baseUrlField: 'GROQ_BASE_URL',
     keyField: 'GROQ_API_KEY',
     modelField: 'GROQ_MODEL',
     defaultModel: 'llama-3.3-70b-versatile',
     baseUrl: 'https://api.groq.com/openai/v1',
   },
   openrouter: {
+    baseUrlField: 'OPENROUTER_BASE_URL',
     keyField: 'OPENROUTER_API_KEY',
     modelField: 'OPENROUTER_MODEL',
     defaultModel: 'meta-llama/llama-3.3-70b-instruct:free',
@@ -47,6 +61,13 @@ const PRESETS: Record<string, OpenAICompatiblePreset> = {
     baseUrl: 'http://localhost:11434/v1',
     baseUrlField: 'OLLAMA_BASE_URL',
     keyless: true,
+  },
+  deepseek: {
+    baseUrlField: 'DEEPSEEK_BASE_URL',
+    keyField: 'DEEPSEEK_API_KEY',
+    modelField: 'DEEPSEEK_MODEL',
+    defaultModel: 'deepseek-flash',
+    baseUrl: 'https://api.deepseek.com',
   },
   openai: {
     keyField: 'OPENAI_API_KEY',
@@ -73,15 +94,21 @@ export function buildNamedAIProvider(id: AIProviderId, credentials: ResolvedCred
   const baseUrl = (preset.baseUrlField ? credentials.get(preset.baseUrlField) : undefined) ?? preset.baseUrl
   const model = credentials.get(preset.modelField) ?? preset.defaultModel
 
+  const options = {
+    name: id,
+    requestDefaults: preset.requestDefaults,
+    minMaxTokens: preset.minMaxTokens,
+  }
+
   if (preset.keyless) {
     // Only counts as configured once the user has actually pointed at a server.
     if (!preset.baseUrlField || !credentials.get(preset.baseUrlField)) return null
-    return new OpenAIProvider('ollama', model, baseUrl, id)
+    return new OpenAIProvider('ollama', model, baseUrl, options)
   }
 
   const key = credentials.get(preset.keyField)
   if (!key) return null
-  return new OpenAIProvider(key, model, baseUrl, id)
+  return new OpenAIProvider(key, model, baseUrl, options)
 }
 
 /**
