@@ -192,10 +192,14 @@ account — but it needs a reasonably powerful machine, and small local models w
 If you configure more than one, a **Use** selector appears at the top of the AI section so you can
 pick which one writes. On *Automatic* the studio prefers the free providers.
 
-**They also back each other up.** Every configured provider forms a fallback chain: if the active
-one is rate-limited or failing, the next one is tried automatically. Free tiers are capped per
-minute and per day, so configuring two or three means hitting a cap slows you down instead of
-stopping you. If they all fail, the error names what each one said.
+**They also back each other up.** Every configured provider forms a fallback chain, and each
+provider contributes its configured model plus known-good alternatives. So a model that is
+overloaded, retired or simply mistyped does not take the provider down with it, and a provider that
+is rate-limited hands over to the next one.
+
+The order tried is: your chosen model → that provider's other models → the next provider. A
+transient "high demand" error is retried once before moving on. If everything is exhausted, the
+error names one reason per provider rather than one per attempt.
 
 > Free tiers and model names change. Every figure above was checked in September 2026 — if something
 > looks different, trust the provider's own pricing page over this file.
@@ -209,6 +213,9 @@ stopping you. If they all fail, the error names what each one said.
 | *"used its whole token budget on reasoning"* | A thinking model spent the budget before writing. Switch to a Flash model, or a shorter target duration. |
 | *"rate limit reached"* | Free tiers cap requests per minute and per day. Wait and retry. |
 | *"Could not reach Ollama"* | Ollama is not running. Start it with `ollama serve`. |
+| *"Ollama does not have the model … yet"* | Ollama is running but that model was never pulled. Run `ollama pull <model>`. |
+| *"is temporarily unavailable"* | The model is overloaded. Retried once automatically, then other models and providers are tried. |
+| *"All N configured AI providers failed"* | Every option was exhausted. The message names what each one said — fix whichever is closest to working. |
 | *"replied with text that is not valid JSON"* | The model ignored JSON mode. Pick a different model — the message quotes what it actually said. |
 
 **Each key belongs on its own card.** A DeepSeek key on the OpenAI card will be rejected, because it

@@ -23,6 +23,12 @@ interface OpenAICompatiblePreset {
   /** Extra body fields this provider needs (e.g. Gemini's reasoning controls). */
   requestDefaults?: Record<string, unknown>
   /**
+   * Models to try if the configured one fails. Covers a model being overloaded,
+   * retired, or simply mistyped in Settings — the provider stays usable instead
+   * of taking the whole chain down with it.
+   */
+  fallbackModels?: string[]
+  /**
    * Floor for max_tokens. Reasoning models spend part of the budget on thinking
    * before emitting any text, so too small a ceiling returns an empty message.
    */
@@ -40,6 +46,7 @@ const PRESETS: Record<string, OpenAICompatiblePreset> = {
     // tokens come out of max_tokens, hence the floor.
     requestDefaults: { reasoning_effort: 'low' },
     minMaxTokens: 1024,
+    fallbackModels: ['gemini-3-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'],
   },
   groq: {
     baseUrlField: 'GROQ_BASE_URL',
@@ -47,6 +54,7 @@ const PRESETS: Record<string, OpenAICompatiblePreset> = {
     modelField: 'GROQ_MODEL',
     defaultModel: 'llama-3.3-70b-versatile',
     baseUrl: 'https://api.groq.com/openai/v1',
+    fallbackModels: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
   },
   openrouter: {
     baseUrlField: 'OPENROUTER_BASE_URL',
@@ -54,6 +62,7 @@ const PRESETS: Record<string, OpenAICompatiblePreset> = {
     modelField: 'OPENROUTER_MODEL',
     defaultModel: 'meta-llama/llama-3.3-70b-instruct:free',
     baseUrl: 'https://openrouter.ai/api/v1',
+    fallbackModels: ['meta-llama/llama-3.3-70b-instruct:free'],
   },
   ollama: {
     keyField: '',
@@ -69,6 +78,7 @@ const PRESETS: Record<string, OpenAICompatiblePreset> = {
     modelField: 'DEEPSEEK_MODEL',
     defaultModel: 'deepseek-flash',
     baseUrl: 'https://api.deepseek.com',
+    fallbackModels: ['deepseek-flash'],
   },
   openai: {
     keyField: 'OPENAI_API_KEY',
@@ -76,24 +86,29 @@ const PRESETS: Record<string, OpenAICompatiblePreset> = {
     defaultModel: 'gpt-4o-mini',
     baseUrl: 'https://api.openai.com/v1',
     baseUrlField: 'OPENAI_BASE_URL',
+    fallbackModels: ['gpt-4o-mini'],
   },
 }
 
 const ANTHROPIC_DEFAULT_MODEL = 'claude-sonnet-5'
 
 /** Builds one named provider, or null when it has no usable credentials. */
-export function buildNamedAIProvider(id: AIProviderId, credentials: ResolvedCredentials): AIProvider | null {
+export function buildNamedAIProvider(
+  id: AIProviderId,
+  credentials: ResolvedCredentials,
+  modelOverride?: string,
+): AIProvider | null {
   if (id === 'anthropic') {
     const key = credentials.get('ANTHROPIC_API_KEY')
     if (!key) return null
-    return new AnthropicProvider(key, credentials.get('ANTHROPIC_MODEL') ?? ANTHROPIC_DEFAULT_MODEL)
+    return new AnthropicProvider(key, modelOverride ?? credentials.get('ANTHROPIC_MODEL') ?? ANTHROPIC_DEFAULT_MODEL)
   }
 
   const preset = PRESETS[id]
   if (!preset) return null
 
   const baseUrl = (preset.baseUrlField ? credentials.get(preset.baseUrlField) : undefined) ?? preset.baseUrl
-  const model = credentials.get(preset.modelField) ?? preset.defaultModel
+  const model = modelOverride ?? credentials.get(preset.modelField) ?? preset.defaultModel
 
   const options = {
     name: id,
@@ -127,20 +142,34 @@ export function buildAIProvider(credentials: ResolvedCredentials): AIProvider | 
       ? [chosen, ...AI_PROVIDER_IDS.filter((id) => id !== chosen)]
       : [...AI_PROVIDER_IDS]
 
-  const providers = order
-    .map((id) => buildNamedAIProvider(id, credentials))
-    .filter((provider): provider is AIProvider => provider !== null)
+  // Each provider contributes its configured model first, then its known-good
+  // fallbacks, so one bad or busy model does not disable the provider.
+  const providers: AIProvider[] = []
+  for (const id of order) {
+    const primary = buildNamedAIProvider(id, credentials)
+    if (!primary) continue
+    providers.push(primary)
+
+    const seen = new Set([primary.model])
+    for (const model of PRESETS[id]?.fallbackModels ?? []) {
+      if (seen.has(model)) continue
+      seen.add(model)
+      const alternate = buildNamedAIProvider(id, credentials, model)
+      if (alternate) providers.push(alternate)
+    }
+  }
 
   if (!providers.length) return null
   if (providers.length === 1) return providers[0]
   return new FailoverAIProvider(providers)
 }
 
-/** Every provider that currently has usable credentials, in fallback order. */
-export function configuredAIProviders(credentials: ResolvedCredentials): AIProvider[] {
+/** Distinct provider names that currently have usable credentials. */
+export function configuredAIProviders(credentials: ResolvedCredentials): string[] {
   const provider = buildAIProvider(credentials)
   if (!provider) return []
-  return provider instanceof FailoverAIProvider ? provider.providers : [provider]
+  const all = provider instanceof FailoverAIProvider ? provider.providers : [provider]
+  return [...new Set(all.map((entry) => entry.name))]
 }
 
 export async function getAIProvider(): Promise<AIProvider | null> {
@@ -158,7 +187,10 @@ export async function aiStatus(): Promise<{
     connected: Boolean(provider),
     provider: provider?.name ?? null,
     model: provider?.model ?? null,
-    fallbacks: provider instanceof FailoverAIProvider ? provider.available.slice(1) : [],
+    fallbacks:
+      provider instanceof FailoverAIProvider
+        ? [...new Set(provider.available)].filter((name) => name !== provider.name)
+        : [],
   }
 }
 

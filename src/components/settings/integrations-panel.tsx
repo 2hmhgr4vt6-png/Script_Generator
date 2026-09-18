@@ -238,6 +238,12 @@ export function IntegrationsPanel({
                       <p className="mt-1 text-[11px] leading-relaxed text-faint">{spec.caveat}</p>
                     ) : null}
 
+                    {unrecognisedModel(spec, state) ? (
+                      <p className="mt-2 rounded border border-warning/30 bg-warning/5 px-2 py-1.5 text-[11px] leading-relaxed text-warning">
+                        The saved model “{unrecognisedModel(spec, state)}” is not one this provider is known to
+                        serve. Generation will fall back to a working model, but it is worth fixing here.
+                      </p>
+                    ) : null}
                     {connected ? (
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
                         {spec.fields
@@ -444,4 +450,17 @@ function ModelPicker({
       ) : null}
     </div>
   )
+}
+
+/**
+ * A saved model that is not in the provider's known list. Custom ids are
+ * legitimate, so this only warns — but it makes a typo such as "Script"
+ * visible instead of leaving it to fail silently at generation time.
+ */
+function unrecognisedModel(spec: IntegrationSpec, state?: IntegrationState): string | null {
+  const field = spec.fields.find((f) => f.key.endsWith('_MODEL') && f.options?.length)
+  if (!field || !state) return null
+  const value = state.values[field.key]?.preview
+  if (!value) return null
+  return field.options!.some((option) => option.value === value) ? null : value
 }

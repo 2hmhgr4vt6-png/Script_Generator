@@ -28,7 +28,9 @@ export class AIProviderError extends Error {
       | 'invalid-key'
       | 'timeout'
       | 'upstream'
-      | 'json-mode-unsupported' = 'upstream',
+      | 'json-mode-unsupported'
+      | 'model-not-found'
+      | 'transient' = 'upstream',
   ) {
     super(message)
     this.name = 'AIProviderError'

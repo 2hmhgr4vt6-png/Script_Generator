@@ -56,7 +56,7 @@ export class OpenAIProvider implements AIProvider {
 
   async complete(messages: AIMessage[], options: CompletionOptions = {}): Promise<string> {
     try {
-      return await this.request(messages, options)
+      return await this.withRetry(messages, options)
     } catch (error) {
       // Support for JSON mode varies across OpenAI-compatible providers. When a
       // provider rejects it, ask again in plain mode with the instruction moved
@@ -74,6 +74,24 @@ export class OpenAIProvider implements AIProvider {
         )
       }
       throw error
+    }
+  }
+
+  /**
+   * Retries once on a transient upstream failure.
+   *
+   * "This model is currently experiencing high demand" (503) is the common one
+   * on free tiers and usually clears in a second or two, so one short retry
+   * avoids failing over unnecessarily. Rate limits are not retried here — they
+   * last longer than a caller will wait, so the chain moves on instead.
+   */
+  private async withRetry(messages: AIMessage[], options: CompletionOptions): Promise<string> {
+    try {
+      return await this.request(messages, options)
+    } catch (error) {
+      if (!(error instanceof AIProviderError) || error.code !== 'transient') throw error
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      return this.request(messages, options)
     }
   }
 
@@ -108,8 +126,24 @@ export class OpenAIProvider implements AIProvider {
         )
       }
       if (response.status === 404) {
+        // Ollama answers 404 for a model that exists upstream but has not been
+        // pulled locally, which needs a different instruction entirely.
+        if (this.name === 'ollama') {
+          throw new AIProviderError(
+            `Ollama does not have the model "${this.model}" yet. Pull it first: \`ollama pull ${this.model}\``,
+            'model-not-found',
+          )
+        }
         throw new AIProviderError(
           `${who} does not recognise the model "${this.model}". Check the model name in Settings.`,
+          'model-not-found',
+        )
+      }
+      if (response.status === 500 || response.status === 502 || response.status === 503 || response.status === 504) {
+        const detail = extractMessage(await response.text())
+        throw new AIProviderError(
+          `${who} is temporarily unavailable${detail ? `: ${detail}` : ` (HTTP ${response.status})`}`,
+          'transient',
         )
       }
       if (!response.ok) {
@@ -124,7 +158,7 @@ export class OpenAIProvider implements AIProvider {
           throw new AIProviderError(`${who} does not support JSON mode.`, 'json-mode-unsupported')
         }
         if (response.status === 400 && /model/i.test(reason)) {
-          throw new AIProviderError(`${who} rejected the model "${this.model}": ${reason}`)
+          throw new AIProviderError(`${who} rejected the model "${this.model}": ${reason}`, 'model-not-found')
         }
         throw new AIProviderError(`${who} request failed (${response.status})${reason ? `: ${reason}` : ''}`)
       }
