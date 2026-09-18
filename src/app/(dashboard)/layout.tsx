@@ -1,0 +1,29 @@
+import { Sidebar } from '@/components/layout/sidebar'
+import { Topbar } from '@/components/layout/topbar'
+import { requirePageUser } from '@/lib/auth/guard'
+import { getPreferences } from '@/lib/data'
+import { isDemoMode } from '@/lib/env'
+
+export const dynamic = 'force-dynamic'
+
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const user = await requirePageUser()
+  const prefs = await getPreferences(user.id)
+  const demoMode = isDemoMode()
+
+  return (
+    <div className="flex min-h-screen">
+      <Sidebar demoMode={demoMode} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Topbar
+          user={{ email: user.email, name: user.name }}
+          defaultLanguage={prefs?.default_language ?? 'ne'}
+          demoMode={demoMode}
+        />
+        <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
+          <div className="mx-auto w-full max-w-7xl">{children}</div>
+        </main>
+      </div>
+    </div>
+  )
+}

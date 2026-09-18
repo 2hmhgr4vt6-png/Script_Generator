@@ -1,0 +1,44 @@
+{
+  "name": "bhasika-ai-content-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bhasika AI Content Studio — research, audience problem discovery and video script generation for the Bhasika student guidance platform.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "hash-password": "node scripts/hash-password.mjs",
+    "db:migrate": "node scripts/migrate.mjs"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.9.1",
+    "bcryptjs": "^2.4.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "jose": "^5.9.6",
+    "lucide-react": "^0.468.0",
+    "next": "14.2.25",
+    "pg": "^8.13.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.54.2",
+    "server-only": "^0.0.1",
+    "tailwind-merge": "^2.5.5",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "14.2.25",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2"
+  }
+}
